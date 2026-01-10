@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { SourcesCitation, AgentBadge } from '../components/SourcesCitation';
 import {
     View,
     Text,
@@ -40,6 +41,11 @@ interface Message {
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    sources?: any[];
+    agentUsed?: string;
+    intent?: string;
+    verified?: boolean;
+    confidence?: number;
 }
 
 // Language display names - English with native in parentheses
@@ -215,14 +221,37 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
 
         try {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            const aiResponse = await api.sendGuestMessage(input, selectedLanguage);
-            if (isGuest) setGuestCount(prev => prev + 1);
+
+            let content = '';
+            let sources = [];
+            let agentUsed = '';
+            let intent = '';
+            let verified = false;
+            let confidence = 0.0;
+
+            if (isGuest) {
+                content = await api.sendGuestMessage(input, selectedLanguage);
+                setGuestCount(prev => prev + 1);
+            } else {
+                const response = await api.sendOrchestratedMessage(input, user?.id);
+                content = response.response;
+                sources = response.sources;
+                agentUsed = response.agentUsed;
+                intent = response.intent;
+                verified = response.verified;
+                confidence = response.confidence;
+            }
 
             const aiMessage: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: aiResponse,
+                content,
                 timestamp: new Date(),
+                sources,
+                agentUsed,
+                intent,
+                verified,
+                confidence
             };
 
             setMessages(prev => [...prev, aiMessage]);
@@ -319,13 +348,23 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                             <MaterialCommunityIcons name="meditation" size={14} color={colors.primary} />
                         </View>
                         <Text style={[styles.aiName, { color: colors.text }]}>VEDA AI</Text>
-                        <View style={styles.aiStatusDot} />
+                        {item.agentUsed && (
+                            <AgentBadge agent={item.agentUsed} intent={item.intent} />
+                        )}
+                        <View style={{ flex: 1 }} />
                         <Text style={[styles.aiTimestamp, { color: colors.subtext }]}>{formatTime(item.timestamp)}</Text>
                     </View>
                     <View style={[styles.aiContent, { backgroundColor: colors.card }]}>
                         <Markdown style={isDark ? markdownStyles : markdownStylesLight}>
                             {item.content}
                         </Markdown>
+                        {item.sources && item.sources.length > 0 && (
+                            <SourcesCitation
+                                sources={item.sources}
+                                verified={item.verified}
+                                confidence={item.confidence}
+                            />
+                        )}
                         <TouchableOpacity
                             style={styles.voiceButton}
                             onPress={async () => {

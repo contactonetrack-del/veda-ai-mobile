@@ -19,9 +19,17 @@ interface SourcesCitationProps {
     sources: Source[];
     isFallback?: boolean;
     fallbackReason?: string;
+    verified?: boolean;
+    confidence?: number;
 }
 
-export function SourcesCitation({ sources = [], isFallback = false, fallbackReason = '' }: SourcesCitationProps) {
+export function SourcesCitation({
+    sources = [],
+    isFallback = false,
+    fallbackReason = '',
+    verified = false,
+    confidence = 0.0
+}: SourcesCitationProps) {
     const { theme } = useTheme();
 
     // Filter out sources without URLs
@@ -52,6 +60,17 @@ export function SourcesCitation({ sources = [], isFallback = false, fallbackReas
 
     return (
         <View style={[styles.container, { borderTopColor: theme.border }]}>
+            {verified && confidence >= 0.6 && (
+                <View style={[styles.verificationBadge, {
+                    backgroundColor: '#22c55e25',
+                    borderColor: '#22c55e60'
+                }]}>
+                    <Ionicons name="shield-checkmark" size={12} color="#22c55e" />
+                    <Text style={[styles.verificationText, { color: '#22c55e' }]}>
+                        Fact-Checked ({Math.round(confidence * 100)}% confidence)
+                    </Text>
+                </View>
+            )}
             {citableSources.length > 0 && (
                 <>
                     <View style={styles.header}>
@@ -220,6 +239,21 @@ const styles = StyleSheet.create({
     fallbackText: {
         fontSize: 12,
         flex: 1,
+    },
+    verificationBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginBottom: 12,
+        alignSelf: 'flex-start',
+    },
+    verificationText: {
+        fontSize: 11,
+        fontWeight: '600',
     },
     agentBadge: {
         flexDirection: 'row',

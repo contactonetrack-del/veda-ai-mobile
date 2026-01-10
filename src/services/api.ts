@@ -167,6 +167,8 @@ interface OrchestratorResponse {
     sources: SourceInfo[];
     reviewed: boolean;
     contextUsed: boolean;
+    verified: boolean;
+    confidence: number;
     timestamp: string;
     success: boolean;
     error?: string;
@@ -203,6 +205,8 @@ export async function sendOrchestratedMessage(
             sources: data.sources || [],
             reviewed: data.reviewed,
             contextUsed: data.context_used,
+            verified: data.verified || false,
+            confidence: data.confidence || 0.0,
             timestamp: data.timestamp,
             success: true
         };
@@ -215,6 +219,8 @@ export async function sendOrchestratedMessage(
             sources: [],
             reviewed: false,
             contextUsed: false,
+            verified: false,
+            confidence: 0.0,
             timestamp: new Date().toISOString(),
             success: false,
             error: error instanceof Error ? error.message : 'Unknown error'
