@@ -34,6 +34,7 @@ import SpeechService from '../services/SpeechService';
 import VoiceInputService from '../services/VoiceInputService';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
+import VoiceSettingsModal, { VoiceSettings, DEFAULT_VOICE_SETTINGS } from '../components/VoiceSettingsModal';
 
 
 interface Message {
@@ -85,7 +86,8 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
 
     const isGuest = user?.id === 'guest';
     const guestLimit = 5;
-    const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female');
+    const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>(DEFAULT_VOICE_SETTINGS);
+    const [showVoiceSettings, setShowVoiceSettings] = useState(false);
 
     // Welcome messages for all supported languages - Gender aware
     const getWelcomeMessage = (lang: LanguageCode, gender: 'male' | 'female'): string => {
@@ -143,19 +145,25 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
         const welcomeMsg: Message = {
             id: '0',
             role: 'assistant',
-            content: getWelcomeMessage(selectedLanguage, voiceGender),
+            content: getWelcomeMessage(selectedLanguage, voiceSettings.gender),
             timestamp: new Date(),
         };
         setMessages([welcomeMsg]);
-    }, [selectedLanguage, voiceGender]);
+    }, [selectedLanguage, voiceSettings.gender]);
 
-    // Load saved preferences from AsyncStorage on mount (only voiceGender)
+    // Load saved preferences from AsyncStorage
     useEffect(() => {
         const loadPreferences = async () => {
             try {
-                const savedGender = await AsyncStorage.getItem('voiceGender');
-                if (savedGender) {
-                    setVoiceGender(savedGender as 'male' | 'female');
+                const savedSettings = await AsyncStorage.getItem('voiceSettings');
+                if (savedSettings) {
+                    setVoiceSettings(JSON.parse(savedSettings));
+                } else {
+                    // Fallback to old gender setting
+                    const savedGender = await AsyncStorage.getItem('voiceGender');
+                    if (savedGender) {
+                        setVoiceSettings(prev => ({ ...prev, gender: savedGender as 'male' | 'female' }));
+                    }
                 }
             } catch (error) {
                 console.log('Error loading preferences:', error);
@@ -164,10 +172,10 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
         loadPreferences();
     }, []);
 
-    // Save voiceGender preference when it changes
+    // Save voice settings when they change
     useEffect(() => {
-        AsyncStorage.setItem('voiceGender', voiceGender).catch(console.log);
-    }, [voiceGender]);
+        AsyncStorage.setItem('voiceSettings', JSON.stringify(voiceSettings)).catch(console.log);
+    }, [voiceSettings]);
 
     // Handle keyboard events for Android
     useEffect(() => {
@@ -237,7 +245,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 content = await api.sendGuestMessage(input, selectedLanguage);
                 setGuestCount(prev => prev + 1);
             } else {
-                const response = await api.sendOrchestratedMessage(input, user?.id, selectedMode, conversationStyle);
+                const response = await api.sendOrchestratedMessage(input, user?.id, selectedMode, conversationStyle, selectedLanguage);
                 content = response.response;
                 sources = response.sources;
                 agentUsed = response.agentUsed;
@@ -380,9 +388,16 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                                     setCurrentlySpeaking(item.id);
                                     // Strip markdown for speech
                                     const cleanText = item.content.replace(/[*#_`]/g, '');
-                                    await SpeechService.speak(cleanText, selectedLanguage, voiceGender, () => {
-                                        setCurrentlySpeaking(null);
-                                    });
+                                    await SpeechService.speak(
+                                        cleanText,
+                                        selectedLanguage,
+                                        voiceSettings.gender,
+                                        voiceSettings.rate,
+                                        voiceSettings.pitch,
+                                        () => {
+                                            setCurrentlySpeaking(null);
+                                        }
+                                    );
                                 }
                             }}
                         >
@@ -441,19 +456,39 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     </View>
 
                     <View style={styles.headerRight}>
-                        {/* Voice Gender Toggle */}
+                        {/* Voice Settings Trigger */}
                         <TouchableOpacity
                             onPress={() => {
                                 Haptics.selectionAsync();
-                                setVoiceGender(voiceGender === 'male' ? 'female' : 'male');
+                                setShowVoiceSettings(true);
                             }}
-                            style={[styles.genderButton, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                            style={[
+                                styles.genderButton,
+                                {
+                                    backgroundColor: colors.inputBg,
+                                    borderColor: colors.inputBorder,
+                                    width: 36, // Ensure circular
+                                    height: 36,
+                                    padding: 0,
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }
+                            ]}
                         >
                             <Ionicons
-                                name={voiceGender === 'female' ? "woman" : "man"}
-                                size={16}
-                                color={voiceGender === 'female' ? "#EC4899" : "#3B82F6"}
+                                name={voiceSettings.gender === 'female' ? "woman" : "man"}
+                                size={18}
+                                color={voiceSettings.gender === 'female' ? "#EC4899" : "#3B82F6"}
                             />
+                            <View style={{
+                                position: 'absolute',
+                                bottom: -2,
+                                right: -2,
+                                backgroundColor: colors.card,
+                                borderRadius: 6,
+                            }}>
+                                <Ionicons name="settings-sharp" size={10} color={colors.subtext} />
+                            </View>
                         </TouchableOpacity>
 
                         {/* Language Selector */}
@@ -691,6 +726,14 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     </View>
                 </View>
             </Modal>
+
+            {/* Voice Settings Modal */}
+            <VoiceSettingsModal
+                visible={showVoiceSettings}
+                onClose={() => setShowVoiceSettings(false)}
+                currentSettings={voiceSettings}
+                onSave={setVoiceSettings}
+            />
         </View>
     );
 }

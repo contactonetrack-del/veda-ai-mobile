@@ -186,13 +186,20 @@ export async function sendOrchestratedMessage(
     message: string,
     userId: string = 'guest',
     mode: 'auto' | 'study' | 'research' | 'analyze' | 'wellness' | 'search' | 'protection' = 'auto',
-    style: 'auto' | 'fast' | 'planning' = 'auto'
+    style: 'auto' | 'fast' | 'planning' = 'auto',
+    languageCode: LanguageCode = 'en'
 ): Promise<OrchestratorResponse> {
     try {
+        let contextMessage = message;
+        if (languageCode !== 'en') {
+            const langName = SUPPORTED_LANGUAGES[languageCode].name;
+            contextMessage = `[Response Language: ${langName}] ${message}`;
+        }
+
         const response = await authFetch(`${API_V1}/orchestrator/query`, {
             method: 'POST',
             body: JSON.stringify({
-                message,
+                message: contextMessage,
                 user_id: userId,
                 context: {},
                 mode: mode,
@@ -253,12 +260,21 @@ export async function getOrchestratorStatus() {
 
 
 // Supported Languages (Zone-wise)
+// Supported Languages (Zone-wise)
 export const SUPPORTED_LANGUAGES = {
     // English (Default)
     en: { name: 'English', zone: 'Global', flag: '🌐' },
     // North Zone (UP-Bihar Region)
     hi: { name: 'हिंदी', zone: 'North', flag: '🇮🇳' },
     bho: { name: 'भोजपुरी (Beta)', zone: 'North', flag: '🇮🇳' },
+    pa: { name: 'ਪੰਜਾਬੀ (Punjabi)', zone: 'North', flag: '🇮🇳' },
+    ur: { name: 'اردو (Urdu)', zone: 'North', flag: '🇮🇳' },
+    ne: { name: 'नेपाली (Nepali)', zone: 'North', flag: '🇳🇵' },
+    ks: { name: 'कॉशुर (Kashmiri)', zone: 'North', flag: '🇮🇳' },
+    sd: { name: 'سنڌي (Sindhi)', zone: 'North', flag: '🇮🇳' },
+    doi: { name: 'डोगरी (Dogri)', zone: 'North', flag: '🇮🇳' },
+    mai: { name: 'मैथिली (Maithili)', zone: 'North', flag: '🇮🇳' },
+    sat: { name: 'संताली (Santali)', zone: 'North', flag: '🇮🇳' },
     // South Zone
     ta: { name: 'தமிழ்', zone: 'South', flag: '🇮🇳' },
     te: { name: 'తెలుగు', zone: 'South', flag: '🇮🇳' },
@@ -267,9 +283,16 @@ export const SUPPORTED_LANGUAGES = {
     // East Zone
     bn: { name: 'বাংলা', zone: 'East', flag: '🇮🇳' },
     or: { name: 'ଓଡ଼ିଆ', zone: 'East', flag: '🇮🇳' },
+    as: { name: 'অসমীয়া (Assamese)', zone: 'East', flag: '🇮🇳' },
+    mni: { name: 'মৈতৈলোন (Manipuri)', zone: 'East', flag: '🇮🇳' },
+    brx: { name: 'बड़ो (Bodo)', zone: 'East', flag: '🇮🇳' },
     // West Zone
     mr: { name: 'मराठी', zone: 'West', flag: '🇮🇳' },
     gu: { name: 'ગુજરાતી', zone: 'West', flag: '🇮🇳' },
+    kok: { name: 'कोंकणी (Konkani)', zone: 'West', flag: '🇮🇳' },
+    // Tribal
+    gon: { name: 'गोंडी (Gondi)', zone: 'Tribal', flag: '🇮🇳' },
+    hne: { name: 'छत्तीसगढ़ी (Chhattisgarhi)', zone: 'Tribal', flag: '🇮🇳' },
 };
 
 export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;

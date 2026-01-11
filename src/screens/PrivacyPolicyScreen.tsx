@@ -28,7 +28,7 @@ export default function PrivacyPolicyScreen() {
                 <Text style={[styles.lastUpdated, { color: colors.subtext }]}>Last Updated: Jan 10, 2026</Text>
 
                 <Text style={[styles.paragraph, { color: colors.text }]}>
-                    Your privacy is important to us. It is FitBlaze's policy to respect your privacy regarding any information we may collect from you across our app, VEDA AI.
+                    Your privacy is important to us. It is One Track's policy to respect your privacy regarding any information we may collect from you across our app, VEDA AI.
                 </Text>
 
                 <Text style={[styles.heading, { color: colors.text }]}>1. Information We Collect</Text>

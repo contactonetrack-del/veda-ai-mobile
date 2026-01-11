@@ -1,21 +1,34 @@
 import * as Speech from 'expo-speech';
 
-export type SupportedLanguage = 'en' | 'hi' | 'ta' | 'te' | 'kn' | 'ml' | 'mr' | 'gu' | 'bn' | 'pa' | 'bho' | 'or';
+export type SupportedLanguage = 'en' | 'hi' | 'bho' | 'pa' | 'ur' | 'ne' | 'ks' | 'sd' | 'doi' | 'mai' | 'sat' | 'ta' | 'te' | 'kn' | 'ml' | 'bn' | 'or' | 'as' | 'mni' | 'brx' | 'mr' | 'gu' | 'kok' | 'gon' | 'hne';
 export type VoiceGender = 'male' | 'female';
 
 const LANGUAGE_MAP: Record<SupportedLanguage, string> = {
     'en': 'en',
     'hi': 'hi',
+    'bho': 'hi', // Bhojpuri fallback to Hindi
+    'pa': 'pa',
+    'ur': 'ur',
+    'ne': 'ne',
+    'ks': 'ks',
+    'sd': 'sd',
+    'doi': 'doi',
+    'mai': 'hi',
+    'sat': 'hi',
     'ta': 'ta',
     'te': 'te',
     'kn': 'kn',
     'ml': 'ml',
+    'bn': 'bn',
+    'or': 'or',
+    'as': 'as',
+    'mni': 'bn', // Manipuri fallback to Bengali script
+    'brx': 'hi',
     'mr': 'mr',
     'gu': 'gu',
-    'bn': 'bn',
-    'pa': 'pa',
-    'bho': 'hi', // Bhojpuri fallback to Hindi
-    'or': 'or',
+    'kok': 'mr', // Konkani fallback to Marathi
+    'gon': 'hi',
+    'hne': 'hi',
 };
 
 // Keywords to identify male voices
@@ -114,6 +127,8 @@ class SpeechService {
         text: string,
         language: SupportedLanguage = 'en',
         gender: VoiceGender = 'female',
+        rate: number = 0.95,
+        pitch: number = 1.0,
         onDone?: () => void
     ): Promise<void> {
         if (this.isSpeakingInternal) {
@@ -130,9 +145,9 @@ class SpeechService {
 
         const options: Speech.SpeechOptions = {
             language: voice?.language || langCode,
-            // Natural speech settings
-            pitch: 1.0,  // Keep natural pitch
-            rate: 0.95,  // Slightly slower for clarity
+            // Configurable settings
+            pitch: pitch,
+            rate: rate,
             onDone: () => {
                 this.isSpeakingInternal = false;
                 if (onDone) onDone();
@@ -149,8 +164,11 @@ class SpeechService {
             options.voice = voice.identifier;
             console.log(`🔊 Speaking with voice: ${voice.name}`);
         } else {
-            // Fallback: Adjust pitch only if no specific voice found
-            options.pitch = gender === 'female' ? 1.15 : 0.85;
+            // Fallback: Adjust pitch only if no specific voice found AND pitch matches default
+            // If user explicitly sent pitch (e.g. from Persona), use it
+            if (pitch === 1.0) {
+                options.pitch = gender === 'female' ? 1.15 : 0.85;
+            }
             console.log(`🔊 Speaking with pitch adjustment (no specific voice)`);
         }
 

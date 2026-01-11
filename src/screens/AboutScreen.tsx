@@ -100,9 +100,13 @@ export default function AboutScreen() {
 
                 {/* Credits */}
                 <View style={[styles.creditsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                    <Text style={[styles.sectionHeader, { color: colors.subtext }]}>DEVELOPED BY</Text>
-                    <Text style={[styles.developerName, { color: colors.text }]}>FitBlaze Technologies</Text>
-                    <Text style={[styles.developerInfo, { color: colors.subtext }]}>Made with ❤️ in India 🇮🇳</Text>
+                    <Text style={[styles.sectionHeader, { color: colors.subtext }]}>COMPANY</Text>
+                    <Text style={[styles.developerName, { color: colors.text }]}>One Track</Text>
+
+                    <Text style={[styles.sectionHeader, { color: colors.subtext, marginTop: 16 }]}>DEVELOPED BY</Text>
+                    <Text style={[styles.developerName, { color: colors.text }]}>Shiney</Text>
+
+                    <Text style={[styles.developerInfo, { color: colors.subtext, marginTop: 16 }]}>Made with ❤️ in India 🇮🇳</Text>
                 </View>
 
                 {/* Footer */}
