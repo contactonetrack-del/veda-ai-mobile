@@ -7,7 +7,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Production backend URL
-const API_BASE_URL = 'https://veda-ai-backend-ql2b.onrender.com';
+// Local backend URL (Physical Device & Emulator)
+const API_BASE_URL = 'http://192.168.1.8:8000';
+// const API_BASE_URL = 'http://10.0.2.2:8000';
+// const API_BASE_URL = 'https://veda-ai-backend-ql2b.onrender.com';
+// const API_BASE_URL = 'https://veda-ai-backend-ql2b.onrender.com';
 const API_V1 = `${API_BASE_URL}/api/v1`;
 
 // Token storage keys
@@ -180,7 +184,9 @@ interface OrchestratorResponse {
  */
 export async function sendOrchestratedMessage(
     message: string,
-    userId: string = 'guest'
+    userId: string = 'guest',
+    mode: 'auto' | 'study' | 'research' | 'analyze' | 'wellness' | 'search' | 'protection' = 'auto',
+    style: 'auto' | 'fast' | 'planning' = 'auto'
 ): Promise<OrchestratorResponse> {
     try {
         const response = await authFetch(`${API_V1}/orchestrator/query`, {
@@ -188,7 +194,9 @@ export async function sendOrchestratedMessage(
             body: JSON.stringify({
                 message,
                 user_id: userId,
-                context: {}
+                context: {},
+                mode: mode,
+                style: style
             }),
         });
 
@@ -243,8 +251,6 @@ export async function getOrchestratorStatus() {
 
 // ==================== GUEST MODE ====================
 
-// API key loaded from environment variable (set in .env file)
-const GROQ_API_KEY = process.env.EXPO_PUBLIC_GROQ_API_KEY || '';
 
 // Supported Languages (Zone-wise)
 export const SUPPORTED_LANGUAGES = {
@@ -269,83 +275,24 @@ export const SUPPORTED_LANGUAGES = {
 export type LanguageCode = keyof typeof SUPPORTED_LANGUAGES;
 
 export async function sendGuestMessage(message: string, languageCode: LanguageCode = 'en'): Promise<string> {
-    const lang = SUPPORTED_LANGUAGES[languageCode];
-
-    // Special prompt for Bhojpuri (Beta) - Pure language, family-friendly
-    // Used in North Bihar, Eastern UP, Jharkhand regions
-    const bhojpuriPrompt = `तू VEDA AI बाड़ऽ, भोजपुरी बोलेवाला लोग खातिर वेलनेस साथी।
-
-भाषा के नियम:
-- खाली शुद्ध भोजपुरी में जवाब देबऽ
-- हिंदी या अंग्रेजी मिलाइब नाहीं
-- देवनागरी लिपि में लिखबऽ
-- गारी-गलौज बिल्कुल ना करबऽ
-- सम्मानजनक भाषा बोलबऽ
-
-शैली:
-- छोट आ सीधा जवाब देबऽ
-- **बोल्ड** में जरूरी बात लिखबऽ
-- बिंदुवार लिखबऽ
-
-विशेषज्ञता:
-- भोजपुरी खान-पान (लिट्टी-चोखा, सत्तू, ठेकुआ, चूड़ा-दही)
-- योग आ प्राणायाम
-- आयुर्वेद के घरेलू नुस्खा
-- स्वास्थ्य बीमा के जानकारी
-
-हमेशा शुद्ध भोजपुरी में जवाब देबऽ। हर बार "प्रणाम" या "जय हो" मत बोलबऽ - सीधा जवाब देबऽ।`;
-
-    // Standard prompt for other languages
-    const standardPrompt = `You are VEDA AI, a premium wellness companion for Indian users.
-
-RESPONSE LANGUAGE: ${lang.name} (${languageCode})
-You MUST respond entirely in ${lang.name}. Use native script, not transliteration.
-
-YOUR STYLE:
-- **Premium & Professional:** Clear, elegant language in ${lang.name}.
-- **Short & Crisp:** Use bullet points, avoid long paragraphs.
-- **Natural Conversation:** Do NOT start every response with greetings like "Namaste". Only greet when contextually appropriate. Jump straight to helpful content.
-- **Visual Formatting:** Use **Bold** for key terms, lists for steps.
-
-EXPERTISE:
-- Indian Nutrition (Roti, Dal, Ghee, regional foods)
-- Yoga (Asanas, Pranayama)
-- Ayurveda (Doshas, traditional remedies)
-- Health Insurance (IRDAI guidelines)
-
-Respond naturally in ${lang.name} with native script.`;
-
-    const systemPrompt = languageCode === 'bho' ? bhojpuriPrompt : standardPrompt;
-
     try {
-        const response = await fetch(
-            'https://api.groq.com/openai/v1/chat/completions',
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${GROQ_API_KEY}`
-                },
-                body: JSON.stringify({
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        { role: "user", content: message }
-                    ],
-                    model: "llama-3.3-70b-versatile",
-                    temperature: 0.7,
-                    max_tokens: 1024,
-                }),
-            }
-        );
+        // Use the backend orchestrator for guest chats too!
+        // This ensures they get the same intelligence and we hide API keys.
+        // We prepend context about the language if needed.
 
-        if (!response.ok) {
-            const error = await response.json();
-            console.error('Groq API Error:', error);
-            throw new Error('Service busy. Please try again.');
+        let contextMessage = message;
+        if (languageCode !== 'en') {
+            const langName = SUPPORTED_LANGUAGES[languageCode].name;
+            contextMessage = `[Response Language: ${langName}] ${message}`;
         }
 
-        const data = await response.json();
-        return data.choices[0]?.message?.content || "No response generated.";
+        const result = await sendOrchestratedMessage(contextMessage, "guest");
+
+        if (result.success) {
+            return result.response;
+        } else {
+            throw new Error(result.error || "Failed to get response");
+        }
 
     } catch (error) {
         console.error('Guest Chat Error:', error);
@@ -367,4 +314,213 @@ export async function healthCheck(): Promise<boolean> {
     } catch {
         return false;
     }
+}
+
+// ==================== LOCAL AI API (Zero-Cost Local Models) ====================
+
+interface LocalLLMOptions {
+    temperature?: number;
+    maxTokens?: number;
+    systemPrompt?: string;
+    reasoningMode?: boolean;
+}
+
+/**
+ * Query local LLM (zero-cost, runs on Ollama)
+ */
+export async function queryLocalLLM(
+    prompt: string,
+    modelType: string = 'reasoning',
+    options: LocalLLMOptions = {}
+) {
+    const response = await authFetch(`${API_V1}/local-llm/query`, {
+        method: 'POST',
+        body: JSON.stringify({
+            prompt,
+            model_type: modelType,
+            temperature: options.temperature || 0.7,
+            max_tokens: options.maxTokens || 2000,
+            system_prompt: options.systemPrompt || null,
+            reasoning_mode: options.reasoningMode || false
+        }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Local LLM query failed');
+    }
+
+    return response.json();
+}
+
+/**
+ * Get local LLM status
+ */
+export async function getLocalLLMStatus() {
+    const response = await authFetch(`${API_V1}/local-llm/status`);
+    return response.json();
+}
+
+// ==================== ADVANCED REASONING API ====================
+
+/**
+ * Use advanced reasoning for complex problems
+ */
+export async function advancedReasoning(
+    query: string,
+    method: string = 'auto',
+    context: string | null = null
+) {
+    const response = await authFetch(`${API_V1}/reasoning/query`, {
+        method: 'POST',
+        body: JSON.stringify({
+            query,
+            method,
+            context,
+            num_attempts: 3,
+            num_paths: 3
+        }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Reasoning query failed');
+    }
+
+    return response.json();
+}
+
+/**
+ * Get available reasoning methods
+ */
+export async function getReasoningMethods() {
+    const response = await authFetch(`${API_V1}/reasoning/methods`);
+    return response.json();
+}
+
+// ==================== KNOWLEDGE BASE & RAG API ====================
+
+interface KnowledgeQueryOptions {
+    collection?: string;
+    numContexts?: number;
+    modelType?: string;
+    includeSources?: boolean;
+}
+
+/**
+ * Query knowledge base with RAG
+ */
+export async function queryKnowledge(query: string, options: KnowledgeQueryOptions = {}) {
+    const response = await authFetch(`${API_V1}/knowledge/query`, {
+        method: 'POST',
+        body: JSON.stringify({
+            query,
+            collection: options.collection || null,
+            num_contexts: options.numContexts || 3,
+            model_type: options.modelType || 'reasoning',
+            include_sources: options.includeSources !== false
+        }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Knowledge query failed');
+    }
+
+    return response.json();
+}
+
+/**
+ * Search knowledge base
+ */
+export async function searchKnowledge(query: string, limit: number = 5) {
+    const response = await authFetch(`${API_V1}/knowledge/search`, {
+        method: 'POST',
+        body: JSON.stringify({ query, limit }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Knowledge search failed');
+    }
+
+    return response.json();
+}
+
+/**
+ * Get knowledge base status
+ */
+export async function getKnowledgeStatus() {
+    const response = await authFetch(`${API_V1}/knowledge/status`);
+    return response.json();
+}
+
+// ==================== DOMAIN EXPERTS API ====================
+
+interface ExpertQueryOptions {
+    useReasoning?: boolean;
+    reasoningMethod?: string;
+    context?: string;
+}
+
+/**
+ * Query a domain expert
+ */
+export async function queryExpert(
+    query: string,
+    expert: string | null = null,
+    options: ExpertQueryOptions = {}
+) {
+    const response = await authFetch(`${API_V1}/experts/query`, {
+        method: 'POST',
+        body: JSON.stringify({
+            query,
+            expert,
+            use_reasoning: options.useReasoning || false,
+            reasoning_method: options.reasoningMethod || 'auto',
+            context: options.context || null
+        }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Expert query failed');
+    }
+
+    return response.json();
+}
+
+/**
+ * List all domain experts
+ */
+export async function listExperts() {
+    const response = await authFetch(`${API_V1}/experts/list`);
+    return response.json();
+}
+
+// ==================== BROWSER AGENT API ====================
+
+/**
+ * Web search using browser agent
+ */
+export async function webSearch(query: string, numResults: number = 3) {
+    const response = await authFetch(`${API_V1}/browser/search`, {
+        method: 'POST',
+        body: JSON.stringify({ query, num_results: numResults }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || 'Web search failed');
+    }
+
+    return response.json();
+}
+
+/**
+ * Get browser agent status
+ */
+export async function getBrowserStatus() {
+    const response = await authFetch(`${API_V1}/browser/status`);
+    return response.json();
 }

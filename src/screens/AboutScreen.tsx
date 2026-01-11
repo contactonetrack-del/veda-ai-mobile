@@ -1,13 +1,13 @@
 /**
- * About Screen
- * Displays app version and company info
+ * About Screen - Premium Enhanced
+ * Displays app version, features, and company info
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
@@ -18,85 +18,187 @@ export default function AboutScreen() {
     const { t } = useLanguage();
     const navigation = useNavigation();
 
+    const features = [
+        { icon: 'language-outline', title: '25 Languages', desc: '100% India Coverage', color: '#3B82F6' },
+        { icon: 'mic-outline', title: 'Voice AI', desc: 'Speak Naturally', color: '#10B981' },
+        { icon: 'people-outline', title: '12 Experts', desc: 'Domain Specialists', color: '#8B5CF6' },
+        { icon: 'shield-checkmark-outline', title: 'Privacy First', desc: 'Local Processing', color: '#F59E0B' },
+    ];
+
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-            {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+            {/* Premium Header */}
+            <LinearGradient
+                colors={isDark ? ['#0F172A', '#1E293B'] : ['#F8FAFC', '#E2E8F0']}
+                style={[styles.header, { borderBottomColor: colors.cardBorder }]}
+            >
+                <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: colors.inputBg }]}>
+                    <Ionicons name="arrow-back" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('about_veda')}</Text>
-            </View>
+                <View style={{ width: 40 }} />
+            </LinearGradient>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-                <View style={styles.logoContainer}>
+                {/* Premium Logo Card */}
+                <LinearGradient
+                    colors={['rgba(16, 185, 129, 0.15)', 'rgba(59, 130, 246, 0.1)']}
+                    style={[styles.logoCard, { borderColor: colors.cardBorder }]}
+                >
                     <LinearGradient
-                        colors={['#10B981', '#059669']}
+                        colors={['#10B981', '#059669', '#047857']}
                         style={styles.logoBackground}
                     >
-                        <Ionicons name="leaf" size={60} color="#fff" />
+                        <MaterialCommunityIcons name="meditation" size={48} color="#fff" />
                     </LinearGradient>
                     <Text style={[styles.appName, { color: colors.text }]}>VEDA AI</Text>
-                    <Text style={[styles.version, { color: colors.subtext }]}>v1.0.0 (Beta)</Text>
+                    <View style={styles.versionBadge}>
+                        <Text style={styles.versionText}>v1.0.0</Text>
+                        <View style={styles.betaBadge}>
+                            <Text style={styles.betaText}>BETA</Text>
+                        </View>
+                    </View>
+                    <Text style={[styles.tagline, { color: colors.subtext }]}>
+                        Ancient Wisdom • Modern Intelligence
+                    </Text>
+                </LinearGradient>
+
+                {/* Features Grid */}
+                <Text style={[styles.sectionTitle, { color: colors.subtext }]}>KEY FEATURES</Text>
+                <View style={styles.featuresGrid}>
+                    {features.map((feat, idx) => (
+                        <View key={idx} style={[styles.featureCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                            <View style={[styles.featureIcon, { backgroundColor: `${feat.color}20` }]}>
+                                <Ionicons name={feat.icon as any} size={24} color={feat.color} />
+                            </View>
+                            <Text style={[styles.featureTitle, { color: colors.text }]}>{feat.title}</Text>
+                            <Text style={[styles.featureDesc, { color: colors.subtext }]}>{feat.desc}</Text>
+                        </View>
+                    ))}
                 </View>
 
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                    <Text style={[styles.description, { color: colors.text }]}>
-                        VEDA AI is your premium AI wellness companion, designed to bring the ancient wisdom of Indian wellness into the modern era.
-                    </Text>
-                    <Text style={[styles.description, { color: colors.text, marginTop: 12 }]}>
-                        • Nutrition Guidance based on Indian diets
-                        {'\n'}• Yoga & Pranayama Asanas
-                        {'\n'}• Ayurvedic Holistic Healing
-                        {'\n'}• Health Insurance Simplification
+                {/* Mission Card */}
+                <View style={[styles.missionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    <Text style={[styles.missionTitle, { color: colors.text }]}>Our Mission</Text>
+                    <Text style={[styles.missionText, { color: colors.subtext }]}>
+                        To democratize AI wellness guidance for every Indian household, in every language,
+                        completely free of cost. Powered by open-source models and community innovation.
                     </Text>
                 </View>
 
-                <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                {/* Tech Stack */}
+                <View style={[styles.techCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                    <Text style={[styles.sectionHeader, { color: colors.subtext }]}>POWERED BY</Text>
+                    <View style={styles.techTags}>
+                        {['React Native', 'FastAPI', 'Whisper ASR', 'MMS TTS', 'DeepSeek-R1', 'Firebase'].map((tech, i) => (
+                            <View key={i} style={[styles.techTag, { backgroundColor: isDark ? 'rgba(59, 130, 246, 0.2)' : 'rgba(59, 130, 246, 0.1)' }]}>
+                                <Text style={styles.techTagText}>{tech}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+
+                {/* Credits */}
+                <View style={[styles.creditsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                     <Text style={[styles.sectionHeader, { color: colors.subtext }]}>DEVELOPED BY</Text>
                     <Text style={[styles.developerName, { color: colors.text }]}>FitBlaze Technologies</Text>
-                    <Text style={[styles.developerInfo, { color: colors.subtext }]}>Made with ❤️ in India</Text>
+                    <Text style={[styles.developerInfo, { color: colors.subtext }]}>Made with ❤️ in India 🇮🇳</Text>
                 </View>
+
+                {/* Footer */}
+                <Text style={[styles.footer, { color: colors.subtext }]}>© 2026 VEDA AI. All rights reserved.</Text>
             </ScrollView>
         </SafeAreaView>
     );
 }
+
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
         borderBottomWidth: 1,
     },
-    backButton: { marginRight: 16 },
+    backButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     headerTitle: { fontSize: 18, fontWeight: '700' },
-    content: { flex: 1, padding: 20 },
-    logoContainer: { alignItems: 'center', marginBottom: 32, marginTop: 16 },
+    content: { flex: 1, padding: 16 },
+
+    // Logo Card
+    logoCard: {
+        alignItems: 'center',
+        padding: 24,
+        borderRadius: 20,
+        borderWidth: 1,
+        marginBottom: 24,
+    },
     logoBackground: {
-        width: 100,
-        height: 100,
-        borderRadius: 30,
+        width: 90,
+        height: 90,
+        borderRadius: 28,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 16,
         shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-        elevation: 8,
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.4,
+        shadowRadius: 12,
+        elevation: 10,
     },
-    appName: { fontSize: 24, fontWeight: '800', letterSpacing: 0.5 },
-    version: { fontSize: 14, marginTop: 4 },
-    card: {
-        padding: 20,
+    appName: { fontSize: 28, fontWeight: '800', letterSpacing: 1 },
+    versionBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
+    versionText: { fontSize: 14, color: '#64748B' },
+    betaBadge: { backgroundColor: '#3B82F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
+    betaText: { fontSize: 10, fontWeight: '700', color: '#fff' },
+    tagline: { fontSize: 14, marginTop: 12, fontStyle: 'italic' },
+
+    // Features
+    sectionTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 1.5, marginBottom: 12, marginLeft: 4 },
+    featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 24 },
+    featureCard: {
+        width: '47%',
+        padding: 16,
         borderRadius: 16,
         borderWidth: 1,
-        marginBottom: 20,
+        alignItems: 'center',
     },
-    description: { fontSize: 15, lineHeight: 24 },
-    sectionHeader: { fontSize: 12, fontWeight: '700', marginBottom: 8, letterSpacing: 1 },
+    featureIcon: {
+        width: 48,
+        height: 48,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 10,
+    },
+    featureTitle: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
+    featureDesc: { fontSize: 11, textAlign: 'center', marginTop: 4 },
+
+    // Mission
+    missionCard: { padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+    missionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
+    missionText: { fontSize: 14, lineHeight: 22 },
+
+    // Tech
+    techCard: { padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+    sectionHeader: { fontSize: 11, fontWeight: '700', marginBottom: 12, letterSpacing: 1 },
+    techTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    techTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
+    techTagText: { fontSize: 11, fontWeight: '600', color: '#60A5FA' },
+
+    // Credits
+    creditsCard: { padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
     developerName: { fontSize: 16, fontWeight: '700' },
     developerInfo: { fontSize: 14, marginTop: 4 },
+
+    // Footer
+    footer: { textAlign: 'center', fontSize: 12, paddingVertical: 20 },
 });

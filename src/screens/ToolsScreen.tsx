@@ -205,13 +205,21 @@ export default function ToolsScreen() {
                             </View>
                             <View style={styles.genderToggle}>
                                 <TouchableOpacity
-                                    style={[styles.genderBtn, gender === 'male' && styles.genderActive]}
+                                    style={[
+                                        styles.genderBtn,
+                                        { backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
+                                        gender === 'male' && { backgroundColor: '#10B981', borderColor: '#10B981' }
+                                    ]}
                                     onPress={() => setGender('male')}
                                 >
                                     <Ionicons name="male" size={18} color={gender === 'male' ? '#fff' : colors.subtext} />
                                 </TouchableOpacity>
                                 <TouchableOpacity
-                                    style={[styles.genderBtn, gender === 'female' && styles.genderActive]}
+                                    style={[
+                                        styles.genderBtn,
+                                        { backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
+                                        gender === 'female' && { backgroundColor: '#10B981', borderColor: '#10B981' }
+                                    ]}
                                     onPress={() => setGender('female')}
                                 >
                                     <Ionicons name="female" size={18} color={gender === 'female' ? '#fff' : colors.subtext} />
@@ -272,28 +280,41 @@ export default function ToolsScreen() {
                     <View style={styles.resultsContainer}>
                         {/* Main Stats */}
                         <View style={styles.statsRow}>
-                            <View style={[styles.statCard, { backgroundColor: '#1E293B' }]}>
-                                <Text style={[styles.statLabel, { color: '#94A3B8' }]}>BMI</Text>
+                            <View style={[styles.statCard, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }]}>
+                                <Text style={[styles.statLabel, { color: colors.subtext }]}>BMI</Text>
                                 <Text style={[styles.statValue, { color: results.bmiCategory.color }]}>{results.bmi}</Text>
                                 <Text style={[styles.statSub, { color: results.bmiCategory.color }]}>{results.bmiCategory.label}</Text>
                             </View>
-                            <View style={[styles.statCard, { backgroundColor: '#1E293B' }]}>
-                                <Text style={[styles.statLabel, { color: '#94A3B8' }]}>Target</Text>
+                            <View style={[styles.statCard, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }]}>
+                                <Text style={[styles.statLabel, { color: colors.subtext }]}>Target</Text>
                                 <Text style={[styles.statValue, { color: '#F59E0B' }]}>{results.targetCalories}</Text>
-                                <Text style={[styles.statSub, { color: '#64748B' }]}>kcal/day</Text>
+                                <Text style={[styles.statSub, { color: colors.subtext }]}>kcal/day</Text>
                             </View>
                         </View>
 
                         <View style={styles.statsRow}>
-                            <View style={[styles.statCard, { backgroundColor: '#1E293B' }]}>
-                                <Text style={[styles.statLabel, { color: '#94A3B8' }]}>BMR</Text>
-                                <Text style={[styles.statValue, { color: '#3B82F6' }]}>{results.bmr}</Text>
-                                <Text style={[styles.statSub, { color: '#64748B' }]}>Resting Burn</Text>
+                            <View style={[styles.statCard, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }]}>
+                                <Text style={[styles.statLabel, { color: colors.subtext }]}>BMI</Text>
+                                <Text style={[styles.statValue, { color: results.bmiCategory.color }]}>{results.bmi}</Text>
+                                <Text style={[styles.statSub, { color: results.bmiCategory.color }]}>{results.bmiCategory.label}</Text>
                             </View>
-                            <View style={[styles.statCard, { backgroundColor: '#1E293B' }]}>
-                                <Text style={[styles.statLabel, { color: '#94A3B8' }]}>TDEE</Text>
+                            <View style={[styles.statCard, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }]}>
+                                <Text style={[styles.statLabel, { color: colors.subtext }]}>Target</Text>
+                                <Text style={[styles.statValue, { color: '#F59E0B' }]}>{results.targetCalories}</Text>
+                                <Text style={[styles.statSub, { color: colors.subtext }]}>kcal/day</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.statsRow}>
+                            <View style={[styles.statCard, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }]}>
+                                <Text style={[styles.statLabel, { color: colors.subtext }]}>BMR</Text>
+                                <Text style={[styles.statValue, { color: '#3B82F6' }]}>{results.bmr}</Text>
+                                <Text style={[styles.statSub, { color: colors.subtext }]}>Resting Burn</Text>
+                            </View>
+                            <View style={[styles.statCard, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.cardBorder }]}>
+                                <Text style={[styles.statLabel, { color: colors.subtext }]}>TDEE</Text>
                                 <Text style={[styles.statValue, { color: '#8B5CF6' }]}>{results.tdee}</Text>
-                                <Text style={[styles.statSub, { color: '#64748B' }]}>Daily Burn</Text>
+                                <Text style={[styles.statSub, { color: colors.subtext }]}>Daily Burn</Text>
                             </View>
                         </View>
 

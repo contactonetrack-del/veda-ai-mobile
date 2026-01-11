@@ -77,6 +77,10 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
     const keyboardPadding = useRef(new Animated.Value(0)).current;
     const [currentlySpeaking, setCurrentlySpeaking] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
+    const [selectedMode, setSelectedMode] = useState<'auto' | 'fast' | 'planning' | 'study' | 'research' | 'analyze' | 'wellness' | 'search' | 'protection'>('auto'); // Agent Mode
+    const [showModeModal, setShowModeModal] = useState(false);
+    const [conversationStyle, setConversationStyle] = useState<'auto' | 'fast' | 'planning'>('auto'); // Conversation Style
+    const [showStyleModal, setShowStyleModal] = useState(false);
 
 
     const isGuest = user?.id === 'guest';
@@ -233,7 +237,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 content = await api.sendGuestMessage(input, selectedLanguage);
                 setGuestCount(prev => prev + 1);
             } else {
-                const response = await api.sendOrchestratedMessage(input, user?.id);
+                const response = await api.sendOrchestratedMessage(input, user?.id, selectedMode, conversationStyle);
                 content = response.response;
                 sources = response.sources;
                 agentUsed = response.agentUsed;
@@ -493,6 +497,42 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     </View>
                 )}
 
+                {/* Phase 5: Mode Selection Dropdown Trigger */}
+                <TouchableOpacity
+                    style={[styles.modeDropdownTrigger, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
+                    onPress={() => { Haptics.selectionAsync(); setShowModeModal(true); }}
+                >
+                    <Ionicons
+                        name={{
+                            'auto': 'sparkles-outline',
+                            'fast': 'flash-outline',
+                            'planning': 'bulb-outline',
+                            'study': 'school-outline',
+                            'research': 'globe-outline',
+                            'analyze': 'bar-chart-outline',
+                            'wellness': 'heart-outline',
+                            'search': 'search-outline',
+                            'protection': 'shield-outline'
+                        }[selectedMode] as any}
+                        size={16}
+                        color={colors.primary}
+                    />
+                    <Text style={[styles.modeDropdownText, { color: colors.text }]}>
+                        {{
+                            'auto': 'Auto',
+                            'fast': 'Fast',
+                            'planning': 'Planning',
+                            'study': 'Study',
+                            'research': 'Research',
+                            'analyze': 'Analyze',
+                            'wellness': 'Wellness',
+                            'search': 'Search',
+                            'protection': 'Protection'
+                        }[selectedMode]}
+                    </Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.subtext} />
+                </TouchableOpacity>
+
                 {/* Input */}
                 <View style={[styles.inputContainer, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
                     <View style={[styles.inputWrapper, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
@@ -580,6 +620,69 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                                         </Text>
                                         {isSelected && (
                                             <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Phase 5: Mode Selection Modal */}
+            <Modal
+                visible={showModeModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowModeModal(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                        <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
+                            <Text style={[styles.modalTitle, { color: colors.text }]}>Select Mode</Text>
+                            <TouchableOpacity onPress={() => setShowModeModal(false)}>
+                                <Ionicons name="close" size={24} color={colors.subtext} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.languageList}>
+                            {[
+                                { id: 'auto' as const, label: 'Auto', icon: 'sparkles-outline' as const, desc: 'Let AI decide the best approach' },
+                                { id: 'fast' as const, label: 'Fast', icon: 'flash-outline' as const, desc: 'Quick responses, speed-first' },
+                                { id: 'planning' as const, label: 'Planning', icon: 'bulb-outline' as const, desc: 'Brainstorming & structured thinking' },
+                                { id: 'study' as const, label: 'Study', icon: 'school-outline' as const, desc: 'Critical thinking & clarity' },
+                                { id: 'research' as const, label: 'Research', icon: 'globe-outline' as const, desc: 'Deep analysis with web sources' },
+                                { id: 'analyze' as const, label: 'Analyze', icon: 'bar-chart-outline' as const, desc: 'Math & data calculations' },
+                                { id: 'wellness' as const, label: 'Wellness', icon: 'heart-outline' as const, desc: 'Yoga, Ayurveda & Diet' },
+                                { id: 'search' as const, label: 'Search', icon: 'search-outline' as const, desc: 'Live web search' },
+                                { id: 'protection' as const, label: 'Protection', icon: 'shield-outline' as const, desc: 'Insurance guidance' }
+                            ].map((mode) => {
+                                const isSelected = selectedMode === mode.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={mode.id}
+                                        style={[
+                                            styles.modeModalItem,
+                                            { backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
+                                            isSelected && styles.modeModalItemSelected
+                                        ]}
+                                        onPress={() => {
+                                            Haptics.selectionAsync();
+                                            setSelectedMode(mode.id);
+                                            setShowModeModal(false);
+                                        }}
+                                    >
+                                        <Ionicons name={mode.icon} size={22} color={isSelected ? '#10B981' : colors.subtext} />
+                                        <View style={styles.modeModalItemText}>
+                                            <Text style={[styles.modeModalItemLabel, { color: isSelected ? '#10B981' : colors.text }]}>
+                                                {mode.label}
+                                            </Text>
+                                            <Text style={[styles.modeModalItemDesc, { color: colors.subtext }]}>
+                                                {mode.desc}
+                                            </Text>
+                                        </View>
+                                        {isSelected && (
+                                            <Ionicons name="checkmark-circle" size={22} color="#10B981" />
                                         )}
                                     </TouchableOpacity>
                                 );
@@ -834,6 +937,49 @@ const styles = StyleSheet.create({
         fontSize: 11,
         fontWeight: '600',
         marginLeft: 6,
+    },
+    // Phase 5: Mode Selection Dropdown
+    modeDropdownTrigger: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        alignSelf: 'flex-start',
+        marginLeft: 16,
+        marginBottom: 8,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
+        borderRadius: 12,
+        borderWidth: 1,
+        gap: 8,
+    },
+    modeDropdownText: {
+        fontSize: 14,
+        fontWeight: '500',
+    },
+    modeModalItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 8,
+        gap: 12,
+    },
+    modeModalItemSelected: {
+        borderColor: '#10B981',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    },
+    modeModalItemText: {
+        flex: 1,
+        gap: 2,
+    },
+    modeModalItemLabel: {
+        fontSize: 15,
+        fontWeight: '600',
+    },
+    modeModalItemDesc: {
+        fontSize: 12,
+        opacity: 0.8,
     },
 });
 

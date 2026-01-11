@@ -216,7 +216,10 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
 
                         <View style={styles.actionButtons}>
                             <TouchableOpacity
-                                style={[styles.actionButton, styles.googleBtn]}
+                                style={[
+                                    styles.actionButton,
+                                    { backgroundColor: colors.card, borderColor: colors.cardBorder }
+                                ]}
                                 onPress={async () => {
                                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                     try {
@@ -229,16 +232,19 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
                                     }
                                 }}
                             >
-                                <Ionicons name="logo-google" size={20} color="#fff" />
-                                <Text style={styles.actionButtonText}>Google</Text>
+                                <Ionicons name="logo-google" size={20} color={colors.text} />
+                                <Text style={[styles.actionButtonText, { color: colors.text }]}>Google</Text>
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                                style={[styles.actionButton, styles.guestBtn]}
+                                style={[
+                                    styles.actionButton,
+                                    { backgroundColor: colors.card, borderColor: colors.cardBorder }
+                                ]}
                                 onPress={handleGuest}
                             >
-                                <Ionicons name="person-circle-outline" size={20} color="#fff" />
-                                <Text style={styles.actionButtonText}>Guest</Text>
+                                <Ionicons name="person-circle-outline" size={20} color={colors.text} />
+                                <Text style={[styles.actionButtonText, { color: colors.text }]}>Guest</Text>
                             </TouchableOpacity>
                         </View>
                     </View>
