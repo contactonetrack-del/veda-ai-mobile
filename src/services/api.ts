@@ -8,10 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Production backend URL
 // Local backend URL (Physical Device & Emulator)
-const API_BASE_URL = 'http://192.168.1.8:8000';
-// const API_BASE_URL = 'http://10.0.2.2:8000';
-// const API_BASE_URL = 'https://veda-ai-backend-ql2b.onrender.com';
-// const API_BASE_URL = 'https://veda-ai-backend-ql2b.onrender.com';
+// Production backend URL (Render)
+const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://veda-ai-backend-ql2b.onrender.com';
 const API_V1 = `${API_BASE_URL}/api/v1`;
 
 // Token storage keys

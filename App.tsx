@@ -26,26 +26,36 @@ function AppContent() {
     );
   }
 
-  // If user is authenticated or showApp is true, show main app
-  if (user && showApp) {
+  // Error Handling Wrapper
+  try {
+    // If user is authenticated or showApp is true, show main app
+    if (user && showApp) {
+      return (
+        <NavigationContainer>
+          <TabNavigator
+            onLogout={async () => {
+              await logout();
+              setShowApp(false);
+            }}
+          />
+        </NavigationContainer>
+      );
+    }
+
+    // Show auth screen
     return (
-      <NavigationContainer>
-        <TabNavigator
-          onLogout={async () => {
-            await logout();
-            setShowApp(false);
-          }}
-        />
-      </NavigationContainer>
+      <AuthScreen
+        onSuccess={() => setShowApp(true)}
+      />
+    );
+  } catch (error) {
+    console.error("💥 Critical App Error:", error);
+    return (
+      <View style={styles.errorContainer}>
+        <ActivityIndicator size="large" color="#EF4444" />
+      </View>
     );
   }
-
-  // Show auth screen
-  return (
-    <AuthScreen
-      onSuccess={() => setShowApp(true)}
-    />
-  );
 }
 
 export default function App() {
@@ -65,6 +75,12 @@ export default function App() {
 
 const styles = StyleSheet.create({
   loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#020617',
+  },
+  errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',

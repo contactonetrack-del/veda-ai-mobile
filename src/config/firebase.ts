@@ -7,6 +7,7 @@ import { initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Validate Firebase Config to avoid crashes on missing env vars
 const firebaseConfig = {
     apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -17,13 +18,17 @@ const firebaseConfig = {
     measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-
-// Initialize Auth
-const auth = initializeAuth(app);
-
-// Initialize Firestore
-const db = getFirestore(app);
+// Defensive Initialization
+let app, auth, db;
+try {
+    if (!firebaseConfig.apiKey) {
+        console.error("❌ Firebase API Key is missing! Check your environment variables.");
+    }
+    app = initializeApp(firebaseConfig);
+    auth = initializeAuth(app);
+    db = getFirestore(app);
+} catch (error) {
+    console.error("🔥 Firebase Initialization Error:", error);
+}
 
 export { app, auth, db };
