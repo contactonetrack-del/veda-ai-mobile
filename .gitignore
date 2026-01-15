@@ -26,6 +26,17 @@ npm-debug.*
 yarn-debug.*
 yarn-error.*
 
+# Secrets & API Keys
+.env
+.env.*
+google-services.json
+GoogleService-Info.plist
+*.keystore
+*.jks
+*.p8
+*.p12
+*.mobileprovision
+
 # macOS
 .DS_Store
 *.pem
