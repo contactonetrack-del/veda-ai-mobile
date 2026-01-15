@@ -30,7 +30,7 @@ export function SourcesCitation({
     verified = false,
     confidence = 0.0
 }: SourcesCitationProps) {
-    const { theme } = useTheme();
+    const { colors } = useTheme();
 
     // Filter out sources without URLs
     const citableSources = sources.filter(s => s.url);
@@ -59,7 +59,7 @@ export function SourcesCitation({
     };
 
     return (
-        <View style={[styles.container, { borderTopColor: theme.border }]}>
+        <View style={[styles.container, { borderTopColor: colors.cardBorder }]}>
             {verified && confidence >= 0.6 && (
                 <View style={[styles.verificationBadge, {
                     backgroundColor: '#22c55e25',
@@ -74,16 +74,16 @@ export function SourcesCitation({
             {citableSources.length > 0 && (
                 <>
                     <View style={styles.header}>
-                        <Ionicons name="globe-outline" size={12} color={theme.textMuted} />
-                        <Text style={[styles.headerText, { color: theme.textMuted }]}>Sources</Text>
+                        <Ionicons name="globe-outline" size={12} color={colors.subtext} />
+                        <Text style={[styles.headerText, { color: colors.subtext }]}>Sources</Text>
                     </View>
                     <View style={styles.sourcesList}>
                         {citableSources.slice(0, 4).map((source, index) => (
                             <TouchableOpacity
                                 key={index}
                                 style={[styles.sourceChip, {
-                                    backgroundColor: theme.cardBackground,
-                                    borderColor: theme.border
+                                    backgroundColor: colors.card,
+                                    borderColor: colors.cardBorder
                                 }]}
                                 onPress={() => handleOpenLink(source.url)}
                                 activeOpacity={0.7}
@@ -95,19 +95,19 @@ export function SourcesCitation({
                                         defaultSource={require('../../assets/icon.png')}
                                     />
                                 ) : (
-                                    <View style={[styles.sourceNumber, { backgroundColor: theme.primary + '30' }]}>
-                                        <Text style={[styles.sourceNumberText, { color: theme.primary }]}>
+                                    <View style={[styles.sourceNumber, { backgroundColor: colors.primary + '30' }]}>
+                                        <Text style={[styles.sourceNumberText, { color: colors.primary }]}>
                                             {index + 1}
                                         </Text>
                                     </View>
                                 )}
                                 <Text
-                                    style={[styles.sourceTitle, { color: theme.text }]}
+                                    style={[styles.sourceTitle, { color: colors.text }]}
                                     numberOfLines={1}
                                 >
                                     {source.title || getHostname(source.url)}
                                 </Text>
-                                <Ionicons name="open-outline" size={12} color={theme.textMuted} />
+                                <Ionicons name="open-outline" size={12} color={colors.subtext} />
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -116,11 +116,11 @@ export function SourcesCitation({
 
             {isFallback && (
                 <View style={[styles.fallbackNotice, {
-                    backgroundColor: theme.warning + '15',
-                    borderColor: theme.warning + '40'
+                    backgroundColor: colors.accent + '15',
+                    borderColor: colors.accent + '40'
                 }]}>
-                    <Ionicons name="alert-circle-outline" size={14} color={theme.warning} />
-                    <Text style={[styles.fallbackText, { color: theme.warning }]}>
+                    <Ionicons name="alert-circle-outline" size={14} color={colors.accent} />
+                    <Text style={[styles.fallbackText, { color: colors.accent }]}>
                         {fallbackReason === 'search_quota_exceeded'
                             ? 'Search quota exceeded. Response based on AI knowledge.'
                             : 'Answered from AI knowledge base.'}
@@ -137,7 +137,7 @@ interface AgentBadgeProps {
 }
 
 export function AgentBadge({ agent, intent }: AgentBadgeProps) {
-    const { theme } = useTheme();
+    const { colors } = useTheme();
 
     if (!agent) return null;
 
@@ -146,7 +146,8 @@ export function AgentBadge({ agent, intent }: AgentBadgeProps) {
             case 'search': return '#6366f1';
             case 'wellness': return '#34d399';
             case 'tool': return '#fb923c';
-            default: return theme.primary;
+            case 'deep_research': return '#8b5cf6'; // Violet for Deep Research
+            default: return colors.primary;
         }
     };
 
@@ -155,6 +156,7 @@ export function AgentBadge({ agent, intent }: AgentBadgeProps) {
             case 'search': return 'search-outline';
             case 'wellness': return 'fitness-outline';
             case 'tool': return 'construct-outline';
+            case 'deep_research': return 'library-outline';
             default: return 'sparkles-outline';
         }
     };

@@ -11,7 +11,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import AuthScreen from './src/screens/AuthScreen';
-import TabNavigator from './src/navigation/TabNavigator';
+import RootNavigator from './src/navigation/RootNavigator';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 function AppContent() {
@@ -32,7 +32,7 @@ function AppContent() {
     if (user && showApp) {
       return (
         <NavigationContainer>
-          <TabNavigator
+          <RootNavigator
             onLogout={async () => {
               await logout();
               setShowApp(false);

@@ -35,6 +35,7 @@ import VoiceInputService from '../services/VoiceInputService';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import VoiceSettingsModal, { VoiceSettings, DEFAULT_VOICE_SETTINGS } from '../components/VoiceSettingsModal';
+import { useNavigation } from '@react-navigation/native';
 
 
 interface Message {
@@ -62,9 +63,25 @@ const LANGUAGE_NAMES: Record<LanguageCode, string> = {
     or: 'Odia (ଓଡ଼ିଆ)',
     mr: 'Marathi (मराठी)',
     gu: 'Gujarati (ગુજરાતી)',
+    // Fallbacks for other supported languages from api.ts to fix TS error
+    pa: 'Punjabi (ਪੰਜਾਬੀ)',
+    ur: 'Urdu (اردو)',
+    ne: 'Nepali (नेपाली)',
+    ks: 'Kashmiri (कॉशुर)',
+    sd: 'Sindhi (सिन्धी)',
+    doi: 'Dogri (डोगरी)',
+    mai: 'Maithili (मैथिली)',
+    sat: 'Santali (संताली)',
+    as: 'Assamese (অসমীয়া)',
+    mni: 'Manipuri (মণিপুরী)',
+    brx: 'Bodo (बड़ो)',
+    kok: 'Konkani (कोंकणी)',
+    gon: 'Gondi (गोंडी)',
+    hne: 'Chhattisgarhi (छत्तीसगढ़ी)',
 };
 
 export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
+    const navigation = useNavigation();
     const { user } = useAuth();
     const [messages, setMessages] = useState<Message[]>([]);
     const [input, setInput] = useState('');
@@ -136,6 +153,21 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 male: `**નમસ્તે!** હું **VEDA AI**, તમારો આરોગ્ય સહાયક.\n\nહું મદદ કરી શકું:\n\n• 🥗 **પોષણ** — ભારતીય આહાર\n• 🧘 **યોગ** — આસનો\n• 🌿 **આયુર્વેદ** — કુદરતી ઉપચાર\n• 🛡️ **વીમો** — માર્ગદર્શન\n\n*કંઈપણ પૂછો!*`,
                 female: `**નમસ્તે!** હું **VEDA AI**, તમારી આરોગ્ય સહાયક.\n\nહું મદદ કરી શકું:\n\n• 🥗 **પોષણ** — ભારતીય આહાર\n• 🧘 **યોગ** — આસનો\n• 🌿 **આયુર્વેદ** — કુદરતી ઉપચાર\n• 🛡️ **વીમો** — માર્ગદર્શન\n\n*કંઈપણ પૂછો!*`,
             },
+            // Default handlers for missing languages to satisfy TS Record type (using English)
+            pa: { male: "Sat Sri Akal! I'm VEDA AI.", female: "Sat Sri Akal! I'm VEDA AI." },
+            ur: { male: "Assalam-o-Alaikum! I'm VEDA AI.", female: "Assalam-o-Alaikum! I'm VEDA AI." },
+            ne: { male: "Namaste! I'm VEDA AI.", female: "Namaste! I'm VEDA AI." },
+            ks: { male: "Namaskar! I'm VEDA AI.", female: "Namaskar! I'm VEDA AI." },
+            sd: { male: "Namaste! I'm VEDA AI.", female: "Namaste! I'm VEDA AI." },
+            doi: { male: "Namaste! I'm VEDA AI.", female: "Namaste! I'm VEDA AI." },
+            mai: { male: "Namaste! I'm VEDA AI.", female: "Namaste! I'm VEDA AI." },
+            sat: { male: "Johar! I'm VEDA AI.", female: "Johar! I'm VEDA AI." },
+            as: { male: "Namaskar! I'm VEDA AI.", female: "Namaskar! I'm VEDA AI." },
+            mni: { male: "Khurumjari! I'm VEDA AI.", female: "Khurumjari! I'm VEDA AI." },
+            brx: { male: "Khulumbai! I'm VEDA AI.", female: "Khulumbai! I'm VEDA AI." },
+            kok: { male: "Deo Boro Dis Div! I'm VEDA AI.", female: "Deo Boro Dis Div! I'm VEDA AI." },
+            gon: { male: "Johar! I'm VEDA AI.", female: "Johar! I'm VEDA AI." },
+            hne: { male: "Jay Johar! I'm VEDA AI.", female: "Jay Johar! I'm VEDA AI." },
         };
         return messages[lang]?.[gender] || messages.en[gender];
     };
@@ -245,9 +277,10 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 content = await api.sendGuestMessage(input, selectedLanguage);
                 setGuestCount(prev => prev + 1);
             } else {
+                // @ts-ignore - Argument type mismatch for selectedMode
                 const response = await api.sendOrchestratedMessage(input, user?.id, selectedMode, conversationStyle, selectedLanguage);
                 content = response.response;
-                sources = response.sources;
+                sources = response.sources || [];
                 agentUsed = response.agentUsed;
                 intent = response.intent;
                 verified = response.verified;
@@ -491,6 +524,30 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                             </View>
                         </TouchableOpacity>
 
+                        {/* Memory Bank Button */}
+                        <TouchableOpacity
+                            onPress={() => {
+                                Haptics.selectionAsync();
+                                // @ts-ignore - Navigation type inference is tricky here
+                                navigation.navigate('Memory');
+                            }}
+                            style={[
+                                styles.genderButton,
+                                {
+                                    backgroundColor: colors.inputBg,
+                                    borderColor: colors.inputBorder,
+                                    width: 36,
+                                    height: 36,
+                                    padding: 0,
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
+                                    marginRight: 8
+                                }
+                            ]}
+                        >
+                            <MaterialCommunityIcons name="database" size={18} color="#58a6ff" />
+                        </TouchableOpacity>
+
                         {/* Language Selector */}
                         <TouchableOpacity
                             onPress={() => {
@@ -522,12 +579,24 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     showsVerticalScrollIndicator={false}
                 />
 
-                {/* Typing */}
+                {/* Typing / Deep Research Loading */}
                 {loading && (
                     <View style={styles.typingContainer}>
                         <View style={styles.typingBubble}>
-                            <ActivityIndicator size="small" color="#10B981" />
-                            <Text style={styles.typingText}>Thinking...</Text>
+                            {selectedMode === 'research' ? (
+                                <>
+                                    <ActivityIndicator size="small" color="#8b5cf6" />
+                                    <View style={{ marginLeft: 8 }}>
+                                        <Text style={[styles.typingText, { color: '#8b5cf6', fontWeight: 'bold' }]}>Deep Researching...</Text>
+                                        <Text style={{ fontSize: 10, color: colors.subtext }}>Analyzing comprehensive sources</Text>
+                                    </View>
+                                </>
+                            ) : (
+                                <>
+                                    <ActivityIndicator size="small" color="#10B981" />
+                                    <Text style={styles.typingText}>Thinking...</Text>
+                                </>
+                            )}
                         </View>
                     </View>
                 )}

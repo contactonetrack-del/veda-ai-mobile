@@ -545,3 +545,27 @@ export async function getBrowserStatus() {
     const response = await authFetch(`${API_V1}/browser/status`);
     return response.json();
 }
+
+// ==================== MEMORY API (Phase 7: Mobile Parity) ====================
+
+export async function getMemories(userId: string, limit: number = 50) {
+    const response = await authFetch(`${API_V1}/memory/?user_id=${userId}&limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to fetch memories');
+    return response.json();
+}
+
+export async function deleteMemory(userId: string, memoryId: string) {
+    const response = await authFetch(`${API_V1}/memory/${memoryId}?user_id=${userId}`, {
+        method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to delete memory');
+    return response.json();
+}
+
+export async function clearMemory(userId: string) {
+    const response = await authFetch(`${API_V1}/memory/?user_id=${userId}`, {
+        method: 'DELETE'
+    });
+    if (!response.ok) throw new Error('Failed to clear memory');
+    return response.json();
+}
