@@ -703,7 +703,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                         </View>
 
                         <ScrollView style={styles.languageList}>
-                            {Object.entries(LANGUAGE_NAMES).map(([code, name]) => {
+                            {Object.entries(SUPPORTED_LANGUAGES).map(([code, lang]) => {
                                 const isSelected = selectedLanguage === code;
                                 return (
                                     <TouchableOpacity
@@ -715,13 +715,19 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                                         ]}
                                         onPress={() => handleLanguageSelect(code as LanguageCode)}
                                     >
-                                        <Text style={[
-                                            styles.languageItemText,
-                                            { color: colors.text },
-                                            isSelected && styles.languageItemTextSelected
-                                        ]}>
-                                            {name}
-                                        </Text>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+                                            <Text style={{ fontSize: 18, marginRight: 10 }}>{lang.flag}</Text>
+                                            <View>
+                                                <Text style={[
+                                                    styles.languageItemText,
+                                                    { color: colors.text },
+                                                    isSelected && styles.languageItemTextSelected
+                                                ]}>
+                                                    {lang.name}
+                                                </Text>
+                                                <Text style={{ fontSize: 10, color: colors.subtext }}>{lang.zone} Zone</Text>
+                                            </View>
+                                        </View>
                                         {isSelected && (
                                             <Ionicons name="checkmark-circle" size={22} color={colors.primary} />
                                         )}
