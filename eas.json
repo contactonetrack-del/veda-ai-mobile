@@ -1,0 +1,30 @@
+{
+    "cli": {
+        "version": ">= 0.52.0"
+    },
+    "build": {
+        "development": {
+            "developmentClient": true,
+            "distribution": "internal"
+        },
+        "preview": {
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://veda-ai-backend-ql2b.onrender.com"
+            }
+        },
+        "production": {
+            "android": {
+                "buildType": "apk"
+            },
+            "env": {
+                "EXPO_PUBLIC_API_URL": "https://veda-ai-backend-ql2b.onrender.com"
+            }
+        }
+    },
+    "submit": {
+        "production": {}
+    }
+}
