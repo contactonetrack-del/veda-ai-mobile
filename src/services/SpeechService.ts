@@ -57,11 +57,13 @@ class SpeechService {
         try {
             this.cachedVoices = await Speech.getAvailableVoicesAsync();
             this.voicesLoaded = true;
-            console.log(`✅ Loaded ${this.cachedVoices.length} TTS voices`);
+            // console.log(`✅ Loaded ${this.cachedVoices.length} TTS voices`);
+
 
             // Log available voices for debugging
             this.cachedVoices.forEach(v => {
-                console.log(`Voice: ${v.name} | ID: ${v.identifier} | Lang: ${v.language} | Quality: ${v.quality}`);
+                // console.log(`Voice: ${v.name} | ID: ${v.identifier} | Lang: ${v.language} | Quality: ${v.quality}`);
+
             });
         } catch (error) {
             console.error('❌ Error loading voices:', error);
@@ -95,7 +97,8 @@ class SpeechService {
         });
 
         if (bestVoice) {
-            console.log(`✅ Found Enhanced ${gender} voice: ${bestVoice.name}`);
+            // console.log(`✅ Found Enhanced ${gender} voice: ${bestVoice.name}`);
+
             return bestVoice;
         }
 
@@ -107,7 +110,8 @@ class SpeechService {
         });
 
         if (bestVoice) {
-            console.log(`✅ Found ${gender} voice: ${bestVoice.name}`);
+            // console.log(`✅ Found ${gender} voice: ${bestVoice.name}`);
+
             return bestVoice;
         }
 
@@ -162,7 +166,8 @@ class SpeechService {
         // Use specific voice if found
         if (voice?.identifier) {
             options.voice = voice.identifier;
-            console.log(`🔊 Speaking with voice: ${voice.name}`);
+            // console.log(`🔊 Speaking with voice: ${voice.name}`);
+
         } else {
             // Fallback: Adjust pitch only if no specific voice found AND pitch matches default
             // If user explicitly sent pitch (e.g. from Persona), use it

@@ -8,9 +8,10 @@ import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, ThemeColors } from '../config/colors';
 
-// Theme preference: 'system' follows device, 'light'/'dark' are explicit
-export type ThemePreference = 'system' | 'light' | 'dark';
-type ThemeType = 'light' | 'dark';
+// Theme preference: 'system' follows device, 'light'/'dark'/'highContrast' are explicit
+export type ThemePreference = 'system' | 'light' | 'dark' | 'highContrast';
+export type MotionPreference = 'system' | 'reduced' | 'full';
+type ThemeType = 'light' | 'dark' | 'highContrast';
 
 interface ThemeContextType {
     theme: ThemeType;  // Actual theme being used
@@ -20,6 +21,10 @@ interface ThemeContextType {
     setThemePreference: (preference: ThemePreference) => void;
     setTheme: (theme: ThemeType) => void; // Support manual override if needed
     isDark: boolean;
+    isHighContrast: boolean;
+    motionPreference: MotionPreference;
+    setMotionPreference: (pref: MotionPreference) => void;
+    isReducedMotion: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
@@ -27,13 +32,18 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const systemScheme = useColorScheme();
     const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
+    const [motionPreference, setMotionPreferenceState] = useState<MotionPreference>('system');
+
+    // In a real app, we'd check AccessibilityInfo.isReduceMotionEnabled() here for 'system'
+    // For now, default 'system' = full motion unless we add that check
+    const isReducedMotion = motionPreference === 'reduced';
 
     // Calculate actual theme based on preference
     const getActualTheme = (preference: ThemePreference): ThemeType => {
         if (preference === 'system') {
             return systemScheme === 'light' ? 'light' : 'dark';
         }
-        return preference;
+        return preference; // 'light', 'dark', or 'highContrast'
     };
 
     const [theme, setTheme] = useState<ThemeType>(() => getActualTheme(themePreference));
@@ -46,6 +56,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
                 if (savedPreference) {
                     setThemePreferenceState(savedPreference as ThemePreference);
                     setTheme(getActualTheme(savedPreference as ThemePreference));
+                }
+
+                const savedMotion = await AsyncStorage.getItem('appMotionPreference');
+                if (savedMotion) {
+                    setMotionPreferenceState(savedMotion as MotionPreference);
                 }
             } catch (error) {
                 console.log('Error loading theme:', error);
@@ -67,11 +82,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.setItem('appThemePreference', preference);
     };
 
+    const setMotionPreference = async (preference: MotionPreference) => {
+        setMotionPreferenceState(preference);
+        await AsyncStorage.setItem('appMotionPreference', preference);
+    };
+
     const toggleTheme = () => {
-        // Cycle through: system -> light -> dark -> system
+        // Cycle through: system -> light -> dark -> highContrast -> system
         const nextPreference: ThemePreference =
             themePreference === 'system' ? 'light' :
-                themePreference === 'light' ? 'dark' : 'system';
+                themePreference === 'light' ? 'dark' :
+                    themePreference === 'dark' ? 'highContrast' : 'system';
         setThemePreference(nextPreference);
     };
 
@@ -85,7 +106,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             toggleTheme,
             setThemePreference,
             setTheme,
-            isDark: theme === 'dark'
+            isDark: theme === 'dark' || theme === 'highContrast',
+            isHighContrast: theme === 'highContrast',
+            motionPreference,
+            setMotionPreference,
+            isReducedMotion
         }}>
             {children}
         </ThemeContext.Provider>

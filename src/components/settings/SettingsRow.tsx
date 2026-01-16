@@ -13,6 +13,10 @@ interface SettingsRowProps {
     onPress?: () => void;
     isLast?: boolean;
     color?: string; // For destructive actions or specific icon colors
+    rightElement?: React.ReactNode;
+    accessibilityLabel?: string;
+    accessibilityHint?: string;
+    accessibilityRole?: any;
 }
 
 export default function SettingsRow({
@@ -24,7 +28,11 @@ export default function SettingsRow({
     onToggle,
     onPress,
     isLast,
-    color
+    color,
+    rightElement,
+    accessibilityLabel,
+    accessibilityHint,
+    accessibilityRole
 }: SettingsRowProps) {
     const { colors } = useTheme();
 
@@ -36,8 +44,12 @@ export default function SettingsRow({
                     onValueChange={onToggle}
                     trackColor={{ false: colors.inputBorder, true: colors.primary }}
                     thumbColor={'#fff'}
+                    accessibilityLabel={label}
                 />
             );
+        }
+        if (rightElement) {
+            return rightElement;
         }
 
         return (
@@ -60,6 +72,9 @@ export default function SettingsRow({
             ]}
             onPress={isToggle ? undefined : onPress}
             activeOpacity={isToggle ? 1 : 0.7}
+            accessibilityLabel={accessibilityLabel || label}
+            accessibilityHint={accessibilityHint}
+            accessibilityRole={accessibilityRole || (isToggle ? undefined : 'button')}
         >
             <View style={styles.leftContainer}>
                 {icon && (

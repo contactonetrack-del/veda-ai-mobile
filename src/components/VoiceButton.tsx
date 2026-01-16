@@ -1,23 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Animated, ViewStyle } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import voiceService from '../services/voiceService';
 
+interface VoiceButtonProps {
+    onTranscript?: (text: string, language: string) => void;
+    onResponse?: (text: string, language: string) => void;
+    size?: number;
+    style?: ViewStyle;
+}
+
 /**
  * VoiceButton - Push-to-talk voice input component for React Native
- * 
- * Props:
- * - onTranscript: (text, language) => void - Called when speech is transcribed
- * - onResponse: (text, language) => void - Called when AI responds
- * - size: number - Button size (default: 56)
- * - style: object - Additional styles
  */
-export default function VoiceButton({ onTranscript, onResponse, size = 56, style }) {
+export default function VoiceButton({ onTranscript, onResponse, size = 56, style }: VoiceButtonProps) {
     const [isConnected, setIsConnected] = useState(false);
     const [isRecording, setIsRecording] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
 
     const pulseAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -39,23 +40,24 @@ export default function VoiceButton({ onTranscript, onResponse, size = 56, style
     useEffect(() => {
         voiceService.setCallbacks({
             onConnectionChange: setIsConnected,
-            onTranscript: (text, language, confidence) => {
+            onTranscript: (text: string, language: string, _confidence: number) => {
                 onTranscript?.(text, language);
                 setIsProcessing(true);
             },
-            onResponse: (text, language) => {
+            onResponse: (text: string, language: string) => {
                 onResponse?.(text, language);
                 setIsProcessing(false);
             },
             onAudioStart: () => setIsPlaying(true),
             onAudioEnd: () => setIsPlaying(false),
-            onError: (msg) => {
+            onError: (msg: string) => {
                 setError(msg);
                 setIsProcessing(false);
                 setIsRecording(false);
                 setTimeout(() => setError(null), 3000);
             },
         });
+
 
         voiceService.connect();
 

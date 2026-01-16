@@ -40,15 +40,33 @@ export default function RootNavigator({ onLogout }: RootNavigatorProps) {
             }}
             initialRouteName="Chat"
         >
-            <Stack.Screen name="Chat">
+            <Stack.Screen
+                name="Chat"
+                options={{
+                    animation: 'fade', // Smooth fade for the main screen
+                }}
+            >
                 {(props) => <ChatScreen {...props} onLogout={onLogout} />}
             </Stack.Screen>
 
-            <Stack.Screen name="Settings">
+            <Stack.Screen
+                name="Settings"
+                options={{
+                    presentation: 'modal',
+                    animation: 'slide_from_bottom',
+                }}
+            >
                 {(props) => <SettingsScreen {...props} onLogout={onLogout} />}
             </Stack.Screen>
 
-            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen
+                name="EditProfile"
+                component={EditProfileScreen}
+                options={{
+                    presentation: 'modal',
+                    animation: 'slide_from_bottom',
+                }}
+            />
             <Stack.Screen name="About" component={AboutScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="TermsOfService" component={TermsScreen} />

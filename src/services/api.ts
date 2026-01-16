@@ -105,6 +105,26 @@ export async function isAuthenticated(): Promise<boolean> {
     return token !== null;
 }
 
+export async function updateUserProfile(data: Record<string, any>) {
+    const response = await authFetch(`${API_V1}/users/me`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+        // Fail silently or throw based on preference, but for settings sync
+        // we might want to know if it failed.
+        // For now, let's log and throw so the UI knows.
+        console.warn('Failed to sync profile to cloud', await response.text());
+        throw new Error('Failed to update profile');
+    }
+
+    const userData = await response.json();
+    // Update local cache
+    await AsyncStorage.setItem(USER_KEY, JSON.stringify(userData));
+    return userData;
+}
+
 // ==================== CHATS ====================
 
 export async function getChats() {
@@ -152,6 +172,67 @@ export async function sendMessage(chatId: string, content: string) {
 
     return response.json();
 }
+
+export async function deleteChat(chatId: string) {
+    const response = await authFetch(`${API_V1}/chats/${chatId}`, {
+        method: 'DELETE',
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to delete chat');
+    }
+
+    return response.json();
+}
+
+/**
+ * Update chat folder (Phase 12: Smart Folders)
+ */
+export async function updateChatFolder(chatId: string, folderId: string) {
+    const response = await authFetch(`${API_V1}/chats/${chatId}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ folder_id: folderId }),
+    });
+
+    if (!response.ok) {
+        throw new Error('Failed to update folder');
+    }
+
+    return response.json();
+}
+
+export interface UserStats {
+    totalMessages: number;
+    totalChats: number;
+    avgMessagesPerDay: number;
+    streakDays: number;
+    topTopics: string[];
+}
+
+export async function getUserStats(): Promise<UserStats> {
+    try {
+        const response = await authFetch(`${API_V1}/users/stats`, {
+            method: 'GET',
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch user stats');
+        }
+
+        return response.json();
+    } catch (error) {
+        // Return fallback mock data if API doesn't exist yet
+        console.log('getUserStats: Using fallback data');
+        return {
+            totalMessages: 0,
+            totalChats: 0,
+            avgMessagesPerDay: 0,
+            streakDays: 0,
+            topTopics: [],
+        };
+    }
+}
+
 
 // ==================== ORCHESTRATOR API (Phase 1: Perplexity-class) ====================
 

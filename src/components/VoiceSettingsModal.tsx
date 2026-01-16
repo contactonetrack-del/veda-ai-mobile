@@ -87,6 +87,8 @@ export default function VoiceSettingsModal({ visible, onClose, currentSettings, 
             animationType="slide"
             transparent={true}
             onRequestClose={onClose}
+            accessibilityViewIsModal={true}
+
         >
             <View style={styles.overlay}>
                 <View style={[styles.content, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
@@ -113,6 +115,9 @@ export default function VoiceSettingsModal({ visible, onClose, currentSettings, 
                                         gender === 'female' && { borderColor: '#EC4899', backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : '#FDF2F8' }
                                     ]}
                                     onPress={() => { Haptics.selectionAsync(); setGender('female'); }}
+                                    accessibilityLabel="Select Female Voice"
+                                    accessibilityRole="radio"
+                                    accessibilityState={{ selected: gender === 'female' }}
                                 >
                                     <Ionicons name="woman" size={24} color={gender === 'female' ? '#EC4899' : colors.subtext} />
                                     <Text style={[styles.genderText, { color: gender === 'female' ? '#EC4899' : colors.subtext }]}>Female</Text>
@@ -126,6 +131,9 @@ export default function VoiceSettingsModal({ visible, onClose, currentSettings, 
                                         gender === 'male' && { borderColor: '#3B82F6', backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF' }
                                     ]}
                                     onPress={() => { Haptics.selectionAsync(); setGender('male'); }}
+                                    accessibilityLabel="Select Male Voice"
+                                    accessibilityRole="radio"
+                                    accessibilityState={{ selected: gender === 'male' }}
                                 >
                                     <Ionicons name="man" size={24} color={gender === 'male' ? '#3B82F6' : colors.subtext} />
                                     <Text style={[styles.genderText, { color: gender === 'male' ? '#3B82F6' : colors.subtext }]}>Male</Text>
@@ -151,6 +159,10 @@ export default function VoiceSettingsModal({ visible, onClose, currentSettings, 
                                                 isSelected && { backgroundColor: isDark ? `${persona.color}15` : `${persona.color}10` }
                                             ]}
                                             onPress={() => { Haptics.selectionAsync(); setSelectedPersona(persona.id); }}
+                                            accessibilityLabel={`Select Persona ${persona.name}, ${persona.description}`}
+                                            accessibilityRole="radio"
+                                            accessibilityState={{ selected: isSelected }}
+
                                         >
                                             <View style={[styles.personaIcon, { backgroundColor: `${persona.color}20` }]}>
                                                 <Text style={[styles.personaInitial, { color: persona.color }]}>{persona.name.charAt(0)}</Text>

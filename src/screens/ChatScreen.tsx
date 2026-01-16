@@ -3,7 +3,7 @@
  * Refactored for minimalism and component modularity
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
@@ -19,6 +19,9 @@ import {
     TouchableOpacity,
     Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../context/AuthContext';
@@ -36,7 +39,14 @@ import { useNavigation } from '@react-navigation/native';
 import ChatHeader from '../components/chat/ChatHeader';
 import ChatInputBar from '../components/chat/ChatInputBar';
 import MessageBubble from '../components/chat/MessageBubble';
+import SkeletonBubble from '../components/chat/SkeletonBubble';
 import SidebarDrawer from '../components/chat/SidebarDrawer';
+import ReactionMenu from '../components/chat/ReactionMenu';
+import { Attachment } from '../components/chat/ChatInputBar';
+import Confetti, { ConfettiRef } from '../components/Confetti';
+import { getContextualSuggestions } from '../services/SuggestionService';
+
+
 
 interface Message {
     id: string;
@@ -48,6 +58,7 @@ interface Message {
     intent?: string;
     verified?: boolean;
     confidence?: number;
+    attachments?: Attachment[];
 }
 
 export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
@@ -64,9 +75,19 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [currentlySpeaking, setCurrentlySpeaking] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
-    // Removed duplicates
+    const [isStreaming, setIsStreaming] = useState(false);
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
     const [showAllSuggestions, setShowAllSuggestions] = useState(false);
+    const [attachments, setAttachments] = useState<Attachment[]>([]);
+    const [dynamicSuggestions, setDynamicSuggestions] = useState<{ id: string, text: string }[]>([]);
+    const confettiRef = useRef<ConfettiRef>(null);
+
+
+
+
+    // Reaction Menu State
+    const [activeMessage, setActiveMessage] = useState<Message | null>(null);
+    const [showReactionMenu, setShowReactionMenu] = useState(false);
 
     const SUGGESTED_ACTIONS = [
         { icon: 'image-outline', label: 'Create image', prompt: 'Create an image of a futuristic city', color: '#10A37F' },
@@ -111,12 +132,29 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
             if (saved) setVoiceSettings(JSON.parse(saved));
         });
 
-        if (Platform.OS === 'android') {
-            const showSub = Keyboard.addListener('keyboardDidShow', (e) => setKeyboardHeight(e.endCoordinates.height));
-            const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0));
-            return () => { showSub.remove(); hideSub.remove(); };
-        }
+        // Smart keyboard handling
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+        const showSub = Keyboard.addListener(showEvent, (e) => {
+            if (Platform.OS === 'android') {
+                setKeyboardHeight(e.endCoordinates.height);
+            }
+            // Smoothly scroll to bottom when keyboard opens
+            setTimeout(() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+            }, 100);
+        });
+
+        const hideSub = Keyboard.addListener(hideEvent, () => {
+            if (Platform.OS === 'android') {
+                setKeyboardHeight(0);
+            }
+        });
+
+        return () => { showSub.remove(); hideSub.remove(); };
     }, []);
+
 
     // Save voice settings
     useEffect(() => {
@@ -141,12 +179,16 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
             id: Date.now().toString(),
             role: 'user',
             content: input,
-            timestamp: new Date()
+            timestamp: new Date(),
+            attachments: [...attachments] // Clone current attachments
         };
 
         setMessages(prev => [...prev, userMsg]);
         setInput('');
+        setAttachments([]); // Clear attachments after sending
         setLoading(true);
+        setIsStreaming(false);
+        await new Promise(r => setTimeout(r, 800));
 
         if (currentlySpeaking) {
             SpeechService.stop();
@@ -166,19 +208,59 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
             const aiMsg: Message = {
                 id: (Date.now() + 1).toString(),
                 role: 'assistant',
-                content: responseData.response,
+                content: '', // Start empty for streaming
                 timestamp: new Date(),
                 sources: responseData.sources,
                 agentUsed: responseData.agentUsed,
             };
             setMessages(prev => [...prev, aiMsg]);
+            setLoading(false);
+            setIsStreaming(true);
+
+            // Simulate streaming effect
+            const fullContent = responseData.response;
+            let currentContent = '';
+            const words = fullContent.split(' ');
+
+            for (let i = 0; i < words.length; i++) {
+                currentContent += (i === 0 ? '' : ' ') + words[i];
+
+                // Update the last message
+                await new Promise(resolve => setTimeout(resolve, 30 + Math.random() * 40));
+                setMessages(prev => {
+                    const newMessages = [...prev];
+                    if (newMessages.length > 0) {
+                        newMessages[newMessages.length - 1].content = currentContent;
+                    }
+                    return newMessages;
+                });
+
+                // Subtle haptic every few words
+                if (i % 4 === 0) {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+            }
+
+            setIsStreaming(false);
+
+            // Generate contextual suggestions after AI response
+            const nextSuggestions = getContextualSuggestions(fullContent);
+            setDynamicSuggestions(nextSuggestions);
+
+            // Trigger confetti for high confidence or wellness triggers
+            if (responseData.verified || fullContent.toLowerCase().includes('congratulations') || fullContent.toLowerCase().includes('great job')) {
+                confettiRef.current?.trigger();
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
         } catch (error) {
+
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
                 role: 'assistant',
                 content: "I'm having trouble connecting. Please try again.",
                 timestamp: new Date()
             }]);
+            setIsStreaming(false);
         } finally {
             setLoading(false);
         }
@@ -225,6 +307,110 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
             setLoading(false);
         }
     };
+
+    const handleMessageInteract = (message: Message) => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setActiveMessage(message);
+        setShowReactionMenu(true);
+    };
+
+    const handleReactionSelect = (reaction: string) => {
+        // In a real app, update the message with the reaction in backend/state
+        // In a real app, update the message with the reaction in backend/state
+        // For demo, maybe show a toast or just close
+    };
+
+    const handleActionSelect = (action: 'copy' | 'reply' | 'regenerate' | 'delete') => {
+        if (!activeMessage) return;
+
+        switch (action) {
+            case 'copy':
+                import('react-native').then(({ Clipboard }) => {
+                    Clipboard.setString(activeMessage.content);
+                });
+                break;
+            case 'reply':
+                setInput(`Replying to: "${activeMessage.content.substring(0, 50)}..." `);
+                break;
+            case 'regenerate':
+                if (activeMessage.role === 'assistant') {
+                    // Logic to regenerate
+                    // Logic to regenerate
+                }
+                break;
+            case 'delete':
+                setMessages(prev => prev.filter(m => m.id !== activeMessage.id));
+                break;
+        }
+    };
+
+    const handleAttachPress = async () => {
+        Alert.alert(
+            'Attach',
+            'Select attachment type:',
+            [
+                {
+                    text: 'Photo Library',
+                    onPress: async () => {
+                        const result = await ImagePicker.launchImageLibraryAsync({
+                            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                            allowsMultipleSelection: true,
+                            selectionLimit: 5,
+                            quality: 0.8,
+                        });
+
+                        if (!result.canceled && result.assets && result.assets.length > 0) {
+                            const newAttachments: Attachment[] = result.assets.map(asset => ({
+                                id: Date.now().toString() + Math.random().toString(),
+                                uri: asset.uri,
+                                type: 'image',
+                                name: asset.fileName || 'Image',
+                            }));
+                            setAttachments(prev => [...prev, ...newAttachments]);
+                            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        }
+                    }
+                },
+                {
+                    text: 'Document (PDF)',
+                    onPress: async () => {
+                        try {
+                            const result = await DocumentPicker.getDocumentAsync({
+                                type: 'application/pdf',
+                                copyToCacheDirectory: true,
+                                multiple: true
+                            });
+
+                            if (!result.canceled && result.assets) {
+                                const newAttachments: Attachment[] = result.assets.map(asset => ({
+                                    id: Date.now().toString() + Math.random().toString(),
+                                    uri: asset.uri,
+                                    type: 'file',
+                                    name: asset.name || 'Document.pdf',
+                                }));
+                                setAttachments(prev => [...prev, ...newAttachments]);
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            }
+                        } catch (err) {
+                            console.log('Doc picker error', err);
+                        }
+                    }
+                },
+                { text: 'Cancel', style: 'cancel' }
+            ]
+        );
+    };
+
+    const handleRemoveAttachment = (id: string) => {
+        setAttachments(prev => prev.filter(a => a.id !== id));
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
+
+    const handleSuggestionSelect = (text: string) => {
+        setInput(text);
+        setShowAllSuggestions(false);
+    };
+
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -278,26 +464,41 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 <FlatList
                     ref={flatListRef}
                     data={messages}
-                    renderItem={({ item }) => (
+                    renderItem={useCallback(({ item, index }: { item: Message, index: number }) => (
                         <MessageBubble
                             role={item.role}
                             content={item.content}
                             sources={item.sources}
+                            attachments={item.attachments}
                             agentUsed={item.agentUsed}
+                            isLatest={index === messages.length - 1}
+                            isTyping={isStreaming && index === messages.length - 1}
+                            onInteract={() => handleMessageInteract(item)}
+                            onDelete={() => {
+                                setMessages(prev => prev.filter(m => m.id !== item.id));
+                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                            }}
+                            onReply={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setInput(`Replying to: "${item.content.substring(0, 50)}..." `);
+                            }}
                         />
-                    )}
+                    ), [messages.length, isStreaming])}
                     keyExtractor={item => item.id}
                     contentContainerStyle={styles.messageList}
                     onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
                     showsVerticalScrollIndicator={false}
+                    removeClippedSubviews={Platform.OS === 'android'}
+                    initialNumToRender={15}
+                    maxToRenderPerBatch={10}
+                    windowSize={10}
+                    getItemLayout={(data, index) => (
+                        { length: 150, offset: 150 * index, index } // Approximate height for scrolling performance
+                    )}
+                    ListFooterComponent={loading ? <SkeletonBubble /> : null}
                 />
             )}
 
-            {loading && (
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                </View>
-            )}
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -310,8 +511,19 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     onMicPress={handleVoiceInput}
                     isLoading={loading}
                     isRecording={isRecording}
+                    attachments={attachments}
+                    onRemoveAttachment={handleRemoveAttachment}
+                    onAttachPress={handleAttachPress}
+                    suggestions={messages.length === 0
+                        ? SUGGESTED_ACTIONS.map(a => ({ id: a.label, text: a.prompt }))
+                        : dynamicSuggestions
+                    }
+                    onSuggestionSelect={handleSuggestionSelect}
                 />
             </KeyboardAvoidingView>
+
+            <Confetti ref={confettiRef} />
+
 
             {/* Hidden Voice Settings for now, accessed via Sidebar later or Header logic */}
             <VoiceSettingsModal
@@ -319,6 +531,14 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 onClose={() => setShowVoiceSettings(false)}
                 currentSettings={voiceSettings}
                 onSave={setVoiceSettings}
+            />
+
+            <ReactionMenu
+                visible={showReactionMenu}
+                onClose={() => setShowReactionMenu(false)}
+                onReactionSelect={handleReactionSelect}
+                onActionSelect={handleActionSelect}
+                messageContent={activeMessage?.content}
             />
         </View>
     );

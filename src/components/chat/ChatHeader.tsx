@@ -27,23 +27,37 @@ export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'V
                 borderBottomColor: isDark ? '#2F2F2F' : '#E5E5E5',
             }
         ]}>
-            <View style={styles.content}>
+            <View
+                style={styles.content}
+                accessibilityRole="header"
+            >
                 {/* Left: Hamburger (Circular) */}
-                <TouchableOpacity onPress={onOpenSidebar} style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8' }]}>
+                <TouchableOpacity
+                    onPress={onOpenSidebar}
+                    style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8' }]}
+                    accessibilityLabel="Open sidebar menu"
+                    accessibilityRole="button"
+                >
                     <Ionicons name="menu" size={24} color={colors.text} />
                 </TouchableOpacity>
 
                 {/* Center: Title (No Pill) */}
-                <TouchableOpacity style={styles.titleContainer}>
+                <View
+                    style={styles.titleContainer}
+                    accessibilityLabel="Veda AI version 1.0"
+                    accessible={true}
+                >
                     <Text style={[styles.titleText, { color: colors.text }]}>Veda AI</Text>
                     <Text style={{ fontSize: 12, color: colors.subtext, marginLeft: 4 }}>v1.0</Text>
-                </TouchableOpacity>
+                </View>
 
                 {/* Right: Profile */}
                 <View style={styles.rightRow}>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('Settings')}
                         style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8', marginLeft: 8 }]}
+                        accessibilityLabel="Open settings and profile"
+                        accessibilityRole="button"
                     >
                         {user?.photoURL ? (
                             <Image

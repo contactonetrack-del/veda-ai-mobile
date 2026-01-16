@@ -17,24 +17,36 @@ import {
     StatusBar,
     ScrollView,
     Dimensions,
-    Animated, // Added Animated
+    Animated,
     Easing,
     Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import * as LocalAuthentication from 'expo-local-authentication';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import {
+    brand,
+    spacing,
+    typography,
+    borderRadius,
+    duration,
+    shadows,
+    opacity as designOpacity
+} from '../config';
+import { AnimatedButton } from '../components/common';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 type AuthMode = 'login' | 'signup';
 
 export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
     const { login, signup, loginAsGuest, signInWithGoogle } = useAuth();
-    const { colors, isDark, toggleTheme } = useTheme();
+    const { colors, isDark, toggleTheme, isReducedMotion } = useTheme();
     const insets = useSafeAreaInsets();
     const [mode, setMode] = useState<AuthMode>('login');
     const [email, setEmail] = useState('');
@@ -42,22 +54,163 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
     const [name, setName] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+
+    // Validation state
+    const [emailError, setEmailError] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [nameError, setNameError] = useState('');
+    const [emailTouched, setEmailTouched] = useState(false);
+    const [passwordTouched, setPasswordTouched] = useState(false);
+    const [nameTouched, setNameTouched] = useState(false);
+    const [passwordStrength, setPasswordStrength] = useState(0);
+
+    // Biometric State
+    const [isBiometricSupported, setIsBiometricSupported] = useState(false);
+    const [biometricType, setBiometricType] = useState<LocalAuthentication.AuthenticationType | null>(null);
+
+    // Animations
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const formAnim = useRef(new Animated.Value(20)).current;
     const rotateAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        Animated.loop(
-            Animated.timing(rotateAnim, {
-                toValue: 1,
-                duration: 42000,
-                easing: Easing.linear,
-                useNativeDriver: true,
-            })
-        ).start();
+        (async () => {
+            const compatible = await LocalAuthentication.hasHardwareAsync();
+            const enrolled = await LocalAuthentication.isEnrolledAsync();
+            if (compatible && enrolled) {
+                setIsBiometricSupported(true);
+                const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
+                if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+                    setBiometricType(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION);
+                } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+                    setBiometricType(LocalAuthentication.AuthenticationType.FINGERPRINT);
+                }
+            }
+        })();
     }, []);
 
+    useEffect(() => {
+        // Reset animations on mode switch
+        fadeAnim.setValue(0);
+        formAnim.setValue(20);
+
+        if (isReducedMotion) {
+            fadeAnim.setValue(1);
+            formAnim.setValue(0);
+            return;
+        }
+
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.spring(formAnim, {
+                toValue: 0,
+                tension: 40,
+                friction: 7,
+                useNativeDriver: true,
+            }),
+            Animated.loop(
+                Animated.timing(rotateAnim, {
+                    toValue: 1,
+                    duration: 42000,
+                    easing: Easing.linear,
+                    useNativeDriver: true,
+                })
+            )
+        ]).start();
+    }, [mode]);
+
+    // Validation functions
+    const validateEmail = (email: string): string => {
+        if (!email) return 'Email is required';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return 'Invalid email format';
+        return '';
+    };
+
+    const validatePassword = (password: string): string => {
+        if (!password) return 'Password is required';
+        if (password.length < 6) return 'Password must be at least 6 characters';
+        return '';
+    };
+
+    const validateName = (name: string): string => {
+        if (!name) return 'Name is required';
+        if (name.length < 2) return 'Name must be at least 2 characters';
+        return '';
+    };
+
+    const calculatePasswordStrength = (password: string): number => {
+        let strength = 0;
+        if (password.length >= 8) strength++;
+        if (password.length >= 12) strength++;
+        if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
+        if (/\d/.test(password)) strength++;
+        if (/[^a-zA-Z\d]/.test(password)) strength++;
+        return strength; // 0-5
+    };
+
+    const getPasswordStrengthLabel = (strength: number): string => {
+        if (strength === 0) return 'Very Weak';
+        if (strength === 1) return 'Weak';
+        if (strength === 2) return 'Fair';
+        if (strength === 3) return 'Good';
+        if (strength === 4) return 'Strong';
+        return 'Very Strong';
+    };
+
+    const getPasswordStrengthColor = (strength: number): string => {
+        if (strength <= 1) return '#EF4444';
+        if (strength === 2) return '#F59E0B';
+        if (strength === 3) return '#10B981';
+        return '#059669';
+    };
+
+    // Handle email change with validation
+    const handleEmailChange = (text: string) => {
+        setEmail(text);
+        if (emailTouched) {
+            setEmailError(validateEmail(text));
+        }
+    };
+
+    // Handle password change with validation
+    const handlePasswordChange = (text: string) => {
+        setPassword(text);
+        if (mode === 'signup') {
+            setPasswordStrength(calculatePasswordStrength(text));
+        }
+        if (passwordTouched) {
+            setPasswordError(validatePassword(text));
+        }
+    };
+
+    // Handle name change with validation
+    const handleNameChange = (text: string) => {
+        setName(text);
+        if (nameTouched) {
+            setNameError(validateName(text));
+        }
+    };
+
     async function handleSubmit() {
-        if (!email || !password || (mode === 'signup' && !name)) {
-            Alert.alert('Required', 'Please fill in all fields');
+        // Validate all fields
+        const emailErr = validateEmail(email);
+        const passwordErr = validatePassword(password);
+        const nameErr = mode === 'signup' ? validateName(name) : '';
+
+        setEmailError(emailErr);
+        setPasswordError(passwordErr);
+        setNameError(nameErr);
+        setEmailTouched(true);
+        setPasswordTouched(true);
+        setNameTouched(true);
+
+        if (emailErr || passwordErr || nameErr) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
 
@@ -86,21 +239,51 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
         onSuccess();
     }
 
+    async function handleBiometricAuth() {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        try {
+            const result = await LocalAuthentication.authenticateAsync({
+                promptMessage: 'Authenticate to access Veda AI',
+                fallbackLabel: 'Use Passcode',
+                disableDeviceFallback: false,
+            });
+
+            if (result.success) {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                // In a real app, retrieve token here. For now, simulate guest/quick login
+                loginAsGuest();
+                onSuccess();
+            } else {
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            }
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Biometric authentication failed');
+        }
+    }
+
     function switchMode() {
-        Haptics.selectionAsync();
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         setMode(mode === 'login' ? 'signup' : 'login');
+        // Reset validation state
+        setEmailError('');
+        setPasswordError('');
+        setNameError('');
+        setEmailTouched(false);
+        setPasswordTouched(false);
+        setNameTouched(false);
+        setPasswordStrength(0);
     }
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
+            <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
-            {/* Theme Toggle Button */}
             <TouchableOpacity
                 style={[styles.themeToggle, {
                     backgroundColor: colors.card,
                     borderColor: colors.cardBorder,
-                    top: insets.top + 20 // Dynamic top calculation
+                    top: insets.top + spacing[4],
                 }]}
                 onPress={() => {
                     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -110,31 +293,36 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
                 <Ionicons name={isDark ? "sunny" : "moon"} size={20} color={colors.primary} />
             </TouchableOpacity>
 
+            {/* Ambient Background Orbs */}
+            <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+                <LinearGradient
+                    colors={[brand.emerald[500] + '30', 'transparent']}
+                    style={[styles.orb, { top: -100, left: -60, width: 300, height: 300 }]}
+                />
+                <LinearGradient
+                    colors={[brand.violet[500] + '30', 'transparent']}
+                    style={[styles.orb, { bottom: 0, right: -60, width: 350, height: 350 }]}
+                />
+                <LinearGradient
+                    colors={['#F59E0B20', 'transparent']}
+                    style={[styles.orb, { top: height / 3, right: -100, width: 250, height: 250 }]}
+                />
+            </View>
+
             <KeyboardAvoidingView
                 style={styles.keyboardView}
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             >
                 <ScrollView
                     contentContainerStyle={[styles.scrollContent, {
-                        paddingTop: insets.top + 60, // Space for toggle
-                        paddingBottom: insets.bottom + 20
+                        paddingTop: insets.top + spacing[12],
+                        paddingBottom: insets.bottom + spacing[8]
                     }]}
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    <View style={styles.header}>
-                        <View style={[styles.logoWrapper, {
-                            width: 120,
-                            height: 120,
-                            borderRadius: 60,
-                            backgroundColor: 'transparent',
-                            marginBottom: 24,
-                            shadowColor: '#00BFFF',
-                            shadowOffset: { width: 0, height: 10 },
-                            shadowOpacity: 0.4,
-                            shadowRadius: 20,
-                            elevation: 12
-                        }]}>
+                    <Animated.View style={[styles.header, { opacity: fadeAnim }]}>
+                        <View style={[styles.logoWrapper, shadows.md]}>
                             <Animated.Image
                                 source={require('../../assets/veda-avatar.png')}
                                 style={{
@@ -150,116 +338,171 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
                                 resizeMode="contain"
                             />
                         </View>
-                        <Text style={[styles.title, { color: colors.text }]}>VEDA AI</Text>
-                    </View>
+                        <Text style={[styles.title, { color: colors.subtext }]}>VEDA AI</Text>
+                    </Animated.View>
 
-                    {/* Main Auth Form */}
-                    <View style={styles.authCard}>
-                        <Text style={[
-                            styles.modeTitle,
-                            { color: mode === 'login' ? colors.primary : colors.text }
-                        ]}>
-                            {mode === 'login' ? "India's First AI" : 'Create Account'}
-                        </Text>
-                        <Text style={[styles.modeSubtitle, { color: colors.subtext }]}>
-                            {mode === 'login' ? 'Your Premium Wellness Companion' : 'Join our premium wellness community'}
-                        </Text>
+                    <Animated.View style={[
+                        styles.authCardContainer,
+                        {
+                            opacity: fadeAnim,
+                            transform: [{ translateY: formAnim }],
+                            shadowColor: '#000',
+                        }
+                    ]}>
+                        <BlurView
+                            intensity={Platform.OS === 'ios' ? 40 : 100}
+                            tint={isDark ? 'dark' : 'light'}
+                            style={[
+                                styles.authCard,
+                                { borderColor: colors.cardBorder }
+                            ]}
+                        >
+                            <Text style={[styles.modeTitle, { color: colors.text }]}>
+                                {mode === 'login' ? "Welcome Back" : 'Join Veda AI'}
+                            </Text>
+                            <Text style={[styles.modeSubtitle, { color: colors.subtext }]}>
+                                {mode === 'login' ? 'Continue your wellness journey' : 'Start your personalized growth journey'}
+                            </Text>
 
-                        <View style={styles.form}>
-                            {mode === 'signup' && (
-                                <View style={[styles.inputWrapper, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                                    <Ionicons name="person-outline" size={20} color={colors.subtext} style={styles.inputIcon} />
+                            <View style={styles.form}>
+                                {mode === 'signup' && (
+                                    <>
+                                        <View style={[styles.inputWrapper, {
+                                            backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
+                                            borderColor: nameTouched && nameError ? '#EF4444' : colors.inputBorder,
+                                            borderWidth: nameTouched && nameError ? 2 : 1
+                                        }]}>
+                                            <Ionicons name="person-outline" size={20} color={colors.subtext} style={styles.inputIcon} />
+                                            <TextInput
+                                                style={[styles.input, { color: colors.text }]}
+                                                placeholder="Full Name"
+                                                placeholderTextColor={colors.placeholder}
+                                                value={name}
+                                                onChangeText={handleNameChange}
+                                                onBlur={() => {
+                                                    setNameTouched(true);
+                                                    setNameError(validateName(name));
+                                                }}
+                                                autoCapitalize="words"
+                                            />
+                                            {nameTouched && !nameError && name && (
+                                                <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                                            )}
+                                        </View>
+                                        {nameTouched && nameError ? (
+                                            <Text style={styles.errorText}>{nameError}</Text>
+                                        ) : null}
+                                    </>
+                                )}
+
+                                <View style={[styles.inputWrapper, {
+                                    backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
+                                    borderColor: emailTouched && emailError ? '#EF4444' : colors.inputBorder,
+                                    borderWidth: emailTouched && emailError ? 2 : 1
+                                }]}>
+                                    <Ionicons name="mail-outline" size={20} color={colors.subtext} style={styles.inputIcon} />
                                     <TextInput
                                         style={[styles.input, { color: colors.text }]}
-                                        placeholder="Full Name"
-                                        placeholderTextColor={colors.subtext}
-                                        value={name}
-                                        onChangeText={setName}
-                                        autoCapitalize="words"
+                                        placeholder="Email Address"
+                                        placeholderTextColor={colors.placeholder}
+                                        value={email}
+                                        onChangeText={handleEmailChange}
+                                        onBlur={() => {
+                                            setEmailTouched(true);
+                                            setEmailError(validateEmail(email));
+                                        }}
+                                        keyboardType="email-address"
+                                        autoCapitalize="none"
                                     />
+                                    {emailTouched && !emailError && email && (
+                                        <Ionicons name="checkmark-circle" size={20} color="#10B981" />
+                                    )}
                                 </View>
-                            )}
+                                {emailTouched && emailError ? (
+                                    <Text style={styles.errorText}>{emailError}</Text>
+                                ) : null}
 
-                            <View style={[styles.inputWrapper, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                                <Ionicons name="mail-outline" size={20} color={colors.subtext} style={styles.inputIcon} />
-                                <TextInput
-                                    style={[styles.input, { color: colors.text }]}
-                                    placeholder="Email Address"
-                                    placeholderTextColor={colors.subtext}
-                                    value={email}
-                                    onChangeText={setEmail}
-                                    keyboardType="email-address"
-                                    autoCapitalize="none"
-                                />
-                            </View>
-
-                            <View style={[styles.inputWrapper, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                                <Ionicons name="lock-closed-outline" size={20} color={colors.subtext} style={styles.inputIcon} />
-                                <TextInput
-                                    style={[styles.input, { color: colors.text }]}
-                                    placeholder="Password"
-                                    placeholderTextColor={colors.subtext}
-                                    value={password}
-                                    onChangeText={setPassword}
-                                    secureTextEntry={!showPassword}
-                                />
-                                <TouchableOpacity
-                                    onPress={() => setShowPassword(!showPassword)}
-                                    style={styles.eyeIcon}
-                                >
-                                    <Ionicons
-                                        name={showPassword ? "eye-outline" : "eye-off-outline"}
-                                        size={20}
-                                        color={colors.subtext}
+                                <View style={[styles.inputWrapper, {
+                                    backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.5)',
+                                    borderColor: passwordTouched && passwordError ? '#EF4444' : colors.inputBorder,
+                                    borderWidth: passwordTouched && passwordError ? 2 : 1
+                                }]}>
+                                    <Ionicons name="lock-closed-outline" size={20} color={colors.subtext} style={styles.inputIcon} />
+                                    <TextInput
+                                        style={[styles.input, { color: colors.text }]}
+                                        placeholder="Password"
+                                        placeholderTextColor={colors.placeholder}
+                                        value={password}
+                                        onChangeText={handlePasswordChange}
+                                        onBlur={() => {
+                                            setPasswordTouched(true);
+                                            setPasswordError(validatePassword(password));
+                                        }}
+                                        secureTextEntry={!showPassword}
                                     />
+                                    <TouchableOpacity
+                                        onPress={() => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setShowPassword(!showPassword);
+                                        }}
+                                        style={styles.eyeIcon}
+                                    >
+                                        <Ionicons
+                                            name={showPassword ? "eye" : "eye-off"}
+                                            size={20}
+                                            color={colors.subtext}
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                                {passwordTouched && passwordError ? (
+                                    <Text style={styles.errorText}>{passwordError}</Text>
+                                ) : null}
+
+                                {/* Password Strength Indicator (Signup only) */}
+                                {mode === 'signup' && password.length > 0 && (
+                                    <View style={styles.passwordStrengthContainer}>
+                                        <View style={styles.strengthBarContainer}>
+                                            <View style={[styles.strengthBar, {
+                                                width: `${(passwordStrength / 5) * 100}%`,
+                                                backgroundColor: getPasswordStrengthColor(passwordStrength)
+                                            }]} />
+                                        </View>
+                                        <Text style={[styles.strengthLabel, { color: getPasswordStrengthColor(passwordStrength) }]}>
+                                            {getPasswordStrengthLabel(passwordStrength)}
+                                        </Text>
+                                    </View>
+                                )}
+
+                                <AnimatedButton
+                                    title={mode === 'login' ? 'Sign In' : 'Create Account'}
+                                    onPress={handleSubmit}
+                                    loading={loading}
+                                    variant="primary"
+                                    size="lg"
+                                    style={styles.submitButton}
+                                />
+
+                                <TouchableOpacity onPress={switchMode} style={styles.switchButton}>
+                                    <Text style={[styles.switchText, { color: colors.subtext }]}>
+                                        {mode === 'login' ? "New here? " : "Already have an account? "}
+                                        <Text style={[styles.switchTextBold, { color: colors.primary }]}>
+                                            {mode === 'login' ? 'Sign Up' : 'Sign In'}
+                                        </Text>
+                                    </Text>
                                 </TouchableOpacity>
                             </View>
+                        </BlurView>
+                    </Animated.View>
 
-                            <TouchableOpacity
-                                style={styles.primaryButton}
-                                onPress={handleSubmit}
-                                disabled={loading}
-                            >
-                                <LinearGradient
-                                    colors={['#10B981', '#059669']}
-                                    style={styles.buttonGradient}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 0 }}
-                                >
-                                    {loading ? (
-                                        <ActivityIndicator color="#fff" />
-                                    ) : (
-                                        <Text style={styles.buttonText}>
-                                            {mode === 'login' ? 'Sign In' : 'Sign Up'}
-                                        </Text>
-                                    )}
-                                </LinearGradient>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity onPress={switchMode} style={styles.switchButton}>
-                                <Text style={[styles.switchText, { color: colors.subtext }]}>
-                                    {mode === 'login' ? "New here? " : "Joined before? "}
-                                    <Text style={[styles.switchTextBold, { color: colors.primary }]}>
-                                        {mode === 'login' ? 'Create Account' : 'Sign In'}
-                                    </Text>
-                                </Text>
-                            </TouchableOpacity>
-                        </View>
+                    <View style={styles.dividerContainer}>
+                        <View style={[styles.line, { backgroundColor: colors.divider }]} />
+                        <Text style={[styles.dividerText, { color: colors.subtext }]}>OR</Text>
+                        <View style={[styles.line, { backgroundColor: colors.divider }]} />
                     </View>
 
-                    {/* Compact Social & Guest Section */}
-                    <View style={styles.secondaryActions}>
-                        <View style={[styles.line, { backgroundColor: colors.text }]} />
-                        <Text style={[styles.dividerText, { color: colors.subtext }]}>OR CONTINUE WITH</Text>
-                        <View style={[styles.line, { backgroundColor: colors.text }]} />
-                    </View>
-
-                    <View style={styles.actionButtons}>
+                    <View style={styles.socialActions}>
                         <TouchableOpacity
-                            style={[
-                                styles.actionButton,
-                                { backgroundColor: 'transparent', borderColor: colors.cardBorder }
-                            ]}
+                            style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
                             onPress={async () => {
                                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                 try {
@@ -273,27 +516,35 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
                             }}
                         >
                             <Ionicons name="logo-google" size={20} color={colors.text} />
-                            <Text style={[styles.actionButtonText, { color: colors.text }]}>Google</Text>
+                            <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
-                            style={[
-                                styles.actionButton,
-                                { backgroundColor: 'transparent', borderColor: colors.cardBorder }
-                            ]}
+                            style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
                             onPress={handleGuest}
                         >
-                            <Ionicons name="person-circle-outline" size={22} color={colors.text} />
-                            <Text style={[styles.actionButtonText, { color: colors.text }]}>Guest</Text>
+                            <Ionicons name="person-circle" size={22} color={colors.text} />
                         </TouchableOpacity>
+
+                        {isBiometricSupported && (
+                            <TouchableOpacity
+                                style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1 }]}
+                                onPress={handleBiometricAuth}
+                            >
+                                <Ionicons
+                                    name={biometricType === LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION ? "scan-outline" : "finger-print-outline"}
+                                    size={22}
+                                    color={colors.primary}
+                                />
+                            </TouchableOpacity>
+                        )}
                     </View>
 
-                    {/* Footer - fixed nesting */}
                     <View style={styles.footer}>
                         <Text style={[styles.footerText, { color: colors.subtext }]}>
-                            By signing in, you agree to our{' '}
+                            By continuing, you agree to our{' '}
                             <Text style={[styles.link, { color: colors.primary }]}>Terms</Text> &{' '}
-                            <Text style={[styles.link, { color: colors.primary }]}>Privacy Policy</Text>
+                            <Text style={[styles.link, { color: colors.primary }]}>Privacy</Text>
                         </Text>
                     </View>
                 </ScrollView>
@@ -308,170 +559,174 @@ const styles = StyleSheet.create({
     },
     themeToggle: {
         position: 'absolute',
-        right: 24,
-        width: 48,
-        height: 48,
-        borderRadius: 24,
+        right: spacing[6],
+        width: 44,
+        height: 44,
+        borderRadius: borderRadius.full,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 100,
-        // Minimalist toggle
+        borderWidth: 1,
+        zIndex: 10,
     },
     keyboardView: {
         flex: 1,
     },
     scrollContent: {
         flexGrow: 1,
+        paddingHorizontal: spacing[8],
         justifyContent: 'center',
-        paddingHorizontal: 40, // Increased to make inputs shorter/less wide
     },
     header: {
         alignItems: 'center',
-        marginBottom: 16, // Reduced from 32
+        marginBottom: spacing[8],
     },
     logoWrapper: {
-        width: 64,
-        height: 64,
-        borderRadius: 20,
+        width: 80,
+        height: 80,
+        borderRadius: borderRadius.xl,
         overflow: 'hidden',
-        marginBottom: 12,
-        elevation: 0,
-        shadowOpacity: 0,
-    },
-    logoGradient: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
+        marginBottom: spacing[4],
+        backgroundColor: 'transparent',
     },
     title: {
-        fontSize: 14,
-        fontWeight: '800',
-        letterSpacing: 2,
-        textTransform: 'uppercase',
-        opacity: 0.5,
-        marginBottom: 0,
+        ...typography.overline,
+        opacity: 0.6,
+    },
+    authCardContainer: {
+        width: '100%',
+        shadowOffset: {
+            width: 0,
+            height: 12,
+        },
+        shadowOpacity: 0.15,
+        shadowRadius: 24,
+        elevation: 8,
     },
     authCard: {
-        backgroundColor: 'transparent',
-        padding: 0,
-        marginBottom: 12,
+        borderRadius: borderRadius.xl,
+        padding: spacing[6],
+        borderWidth: 1,
+        overflow: 'hidden',
     },
     modeTitle: {
-        fontSize: 32,
-        fontWeight: '800',
-        letterSpacing: -0.5,
-        marginBottom: 8,
+        ...typography.h1,
         textAlign: 'center',
+        marginBottom: spacing[2],
     },
     modeSubtitle: {
-        fontSize: 15,
-        opacity: 0.7,
-        marginBottom: 16, // Reduced from 32
+        ...typography.body,
         textAlign: 'center',
+        marginBottom: spacing[8],
+        opacity: 0.8,
     },
     form: {
         width: '100%',
-        gap: 12, // Reduced from 16
+        gap: spacing[4],
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        height: 50,
+        height: 56,
+        borderRadius: borderRadius.lg,
+        paddingHorizontal: spacing[4],
         borderWidth: 1,
     },
     inputIcon: {
-        marginRight: 14,
+        marginRight: spacing[3],
     },
     input: {
         flex: 1,
-        fontSize: 16,
+        ...typography.body,
         height: '100%',
     },
     eyeIcon: {
-        padding: 8,
+        padding: spacing[2],
     },
-    primaryButton: {
-        marginTop: 8,
-        borderRadius: 14,
-        overflow: 'hidden',
-        height: 50,
-        elevation: 0,
-    },
-    buttonGradient: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    buttonText: {
-        color: '#FFFFFF',
-        fontSize: 17,
-        fontWeight: '700',
-        letterSpacing: 0.5,
+    submitButton: {
+        marginTop: spacing[4],
     },
     switchButton: {
-        marginTop: 16, // Reduced from 24
+        marginTop: spacing[4],
         alignItems: 'center',
     },
     switchText: {
-        fontSize: 15,
+        ...typography.bodySmall,
     },
     switchTextBold: {
-        fontWeight: '700',
+        fontWeight: 'bold',
     },
-    secondaryActions: {
-        width: '100%',
-        marginTop: 16, // Reduced from 24
+    dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 16, // Reduced from 24
+        marginVertical: spacing[8],
     },
-    // divider style is likely unused now, can be removed or ignored.
     line: {
         flex: 1,
         height: 1,
-        opacity: 0.1,
-    },
-    dividerText: {
-        fontSize: 12,
-        fontWeight: '700',
-        marginHorizontal: 16,
-        letterSpacing: 1.5,
         opacity: 0.5,
     },
-    actionButtons: {
-        flexDirection: 'row',
-        gap: 16,
+    dividerText: {
+        ...typography.overline,
+        marginHorizontal: spacing[4],
+        opacity: 0.5,
     },
-    actionButton: {
+    socialActions: {
+        flexDirection: 'row',
+        gap: spacing[4],
+    },
+    socialButton: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        height: 50,
-        borderRadius: 14,
+        height: 52,
+        borderRadius: borderRadius.lg,
         borderWidth: 1,
     },
-    actionButtonText: {
-        fontSize: 15,
-        fontWeight: '600',
-        marginLeft: 10,
+    socialButtonText: {
+        ...typography.buttonSmall,
+        marginLeft: spacing[2],
     },
     footer: {
-        marginTop: 16, // Reduced from 32
+        marginTop: spacing[8],
         alignItems: 'center',
     },
     footerText: {
-        fontSize: 12,
-        opacity: 0.6,
+        ...typography.caption,
         textAlign: 'center',
-        lineHeight: 18,
     },
     link: {
-        textDecorationLine: 'none',
         fontWeight: '600',
+    },
+    orb: {
+        position: 'absolute',
+        borderRadius: 999,
+        opacity: 0.6,
+        transform: [{ scale: 1.2 }],
+    },
+    errorText: {
+        color: '#EF4444',
+        fontSize: 12,
+        marginTop: -spacing[2],
+        marginLeft: spacing[1],
+    },
+    passwordStrengthContainer: {
+        marginTop: -spacing[2],
+    },
+    strengthBarContainer: {
+        height: 4,
+        backgroundColor: 'rgba(0,0,0,0.1)',
+        borderRadius: 2,
+        overflow: 'hidden',
+        marginBottom: spacing[1],
+    },
+    strengthBar: {
+        height: '100%',
+        borderRadius: 2,
+    },
+    strengthLabel: {
+        fontSize: 11,
+        fontWeight: '600',
+        textAlign: 'right',
     },
 });

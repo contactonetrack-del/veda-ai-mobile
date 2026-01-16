@@ -10,15 +10,44 @@ import { NavigationContainer } from '@react-navigation/native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LanguageProvider } from './src/context/LanguageContext';
 import { ThemeProvider } from './src/context/ThemeContext';
+import ToastProvider from './src/components/common/Toast';
 import AuthScreen from './src/screens/AuthScreen';
+import OnboardingScreen from './src/screens/OnboardingScreen';
 import RootNavigator from './src/navigation/RootNavigator';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function AppContent() {
   const { user, isLoading, logout } = useAuth();
   const [showApp, setShowApp] = useState(false);
+  const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
 
-  if (isLoading) {
+  React.useEffect(() => {
+    async function checkFirstLaunch() {
+      try {
+        const value = await AsyncStorage.getItem('alreadyLaunched');
+        if (value === null) {
+          setIsFirstLaunch(true);
+        } else {
+          setIsFirstLaunch(false);
+        }
+      } catch (error) {
+        setIsFirstLaunch(false);
+      }
+    }
+    checkFirstLaunch();
+  }, []);
+
+  const completeOnboarding = async () => {
+    try {
+      await AsyncStorage.setItem('alreadyLaunched', 'true');
+      setIsFirstLaunch(false);
+    } catch (error) {
+      console.error('Failed to save onboarding state:', error);
+    }
+  };
+
+  if (isLoading || isFirstLaunch === null) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#10B981" />
@@ -26,10 +55,16 @@ function AppContent() {
     );
   }
 
+  // Show onboarding if it's the first launch
+  if (isFirstLaunch) {
+    return <OnboardingScreen onComplete={completeOnboarding} />;
+  }
+
   // Error Handling Wrapper
   try {
     // If user is authenticated or showApp is true, show main app
-    if (user && showApp) {
+    if (user && (showApp || user.id !== 'none')) {
+      // Note: user.id !== 'none' is a safety check if your context defaults to a dummy user
       return (
         <NavigationContainer>
           <RootNavigator
@@ -64,8 +99,10 @@ export default function App() {
       <AuthProvider>
         <ThemeProvider>
           <LanguageProvider>
-            <StatusBar style="light" />
-            <AppContent />
+            <ToastProvider>
+              <StatusBar style="light" />
+              <AppContent />
+            </ToastProvider>
           </LanguageProvider>
         </ThemeProvider>
       </AuthProvider>
