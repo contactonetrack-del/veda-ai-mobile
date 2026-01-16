@@ -30,7 +30,7 @@ export function SourcesCitation({
     verified = false,
     confidence = 0.0
 }: SourcesCitationProps) {
-    const { colors } = useTheme();
+    const { colors, isDark } = useTheme();
 
     // Filter out sources without URLs
     const citableSources = sources.filter(s => s.url);
@@ -62,52 +62,48 @@ export function SourcesCitation({
         <View style={[styles.container, { borderTopColor: colors.cardBorder }]}>
             {verified && confidence >= 0.6 && (
                 <View style={[styles.verificationBadge, {
-                    backgroundColor: '#22c55e25',
-                    borderColor: '#22c55e60'
+                    backgroundColor: isDark ? 'rgba(34, 197, 94, 0.1)' : 'rgba(34, 197, 94, 0.05)',
+                    borderColor: 'rgba(34, 197, 94, 0.3)'
                 }]}>
                     <Ionicons name="shield-checkmark" size={12} color="#22c55e" />
                     <Text style={[styles.verificationText, { color: '#22c55e' }]}>
-                        Fact-Checked ({Math.round(confidence * 100)}% confidence)
+                        Verified ({Math.round(confidence * 100)}% confidence)
                     </Text>
                 </View>
             )}
             {citableSources.length > 0 && (
                 <>
                     <View style={styles.header}>
-                        <Ionicons name="globe-outline" size={12} color={colors.subtext} />
-                        <Text style={[styles.headerText, { color: colors.subtext }]}>Sources</Text>
+                        <Ionicons name="link-outline" size={13} color={colors.subtext} />
+                        <Text style={[styles.headerText, { color: colors.subtext }]}>Related Sources</Text>
                     </View>
                     <View style={styles.sourcesList}>
-                        {citableSources.slice(0, 4).map((source, index) => (
+                        {citableSources.slice(0, 3).map((source, index) => (
                             <TouchableOpacity
                                 key={index}
-                                style={[styles.sourceChip, {
-                                    backgroundColor: colors.card,
+                                style={[styles.sourceItem, {
+                                    backgroundColor: colors.inputBg,
                                     borderColor: colors.cardBorder
                                 }]}
                                 onPress={() => handleOpenLink(source.url)}
                                 activeOpacity={0.7}
                             >
-                                {source.favicon ? (
-                                    <Image
-                                        source={{ uri: source.favicon }}
-                                        style={styles.favicon}
-                                        defaultSource={require('../../assets/icon.png')}
-                                    />
-                                ) : (
-                                    <View style={[styles.sourceNumber, { backgroundColor: colors.primary + '30' }]}>
-                                        <Text style={[styles.sourceNumberText, { color: colors.primary }]}>
-                                            {index + 1}
-                                        </Text>
-                                    </View>
-                                )}
-                                <Text
-                                    style={[styles.sourceTitle, { color: colors.text }]}
-                                    numberOfLines={1}
-                                >
-                                    {source.title || getHostname(source.url)}
-                                </Text>
-                                <Ionicons name="open-outline" size={12} color={colors.subtext} />
+                                <View style={styles.sourceInfo}>
+                                    {source.favicon ? (
+                                        <Image
+                                            source={{ uri: source.favicon }}
+                                            style={styles.favicon}
+                                        />
+                                    ) : (
+                                        <Ionicons name="document-text-outline" size={12} color={colors.primary} />
+                                    )}
+                                    <Text
+                                        style={[styles.sourceTitle, { color: colors.text }]}
+                                        numberOfLines={1}
+                                    >
+                                        {source.title || getHostname(source.url)}
+                                    </Text>
+                                </View>
                             </TouchableOpacity>
                         ))}
                     </View>
@@ -119,11 +115,11 @@ export function SourcesCitation({
                     backgroundColor: colors.accent + '15',
                     borderColor: colors.accent + '40'
                 }]}>
-                    <Ionicons name="alert-circle-outline" size={14} color={colors.accent} />
+                    <Ionicons name="information-circle-outline" size={14} color={colors.accent} />
                     <Text style={[styles.fallbackText, { color: colors.accent }]}>
                         {fallbackReason === 'search_quota_exceeded'
-                            ? 'Search quota exceeded. Response based on AI knowledge.'
-                            : 'Answered from AI knowledge base.'}
+                            ? 'Search quota exceeded. Using internal knowledge.'
+                            : 'Answered from VEDA knowledge base.'}
                     </Text>
                 </View>
             )}
@@ -178,69 +174,63 @@ export function AgentBadge({ agent, intent }: AgentBadgeProps) {
 
 const styles = StyleSheet.create({
     container: {
-        marginTop: 12,
-        paddingTop: 12,
+        marginTop: 14,
+        paddingTop: 14,
         borderTopWidth: 1,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        marginBottom: 8,
+        marginBottom: 10,
     },
     headerText: {
-        fontSize: 11,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0.8,
     },
     sourcesList: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
+        gap: 10,
     },
-    sourceChip: {
+    sourceItem: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 10,
+        borderWidth: 1,
+        minWidth: 100,
+        maxWidth: '48%',
+    },
+    sourceInfo: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        paddingVertical: 6,
-        paddingHorizontal: 10,
-        borderRadius: 16,
-        borderWidth: 1,
-        maxWidth: 160,
     },
     favicon: {
-        width: 14,
-        height: 14,
-        borderRadius: 4,
-    },
-    sourceNumber: {
-        width: 18,
-        height: 18,
-        borderRadius: 9,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    sourceNumberText: {
-        fontSize: 10,
-        fontWeight: '600',
+        width: 12,
+        height: 12,
+        borderRadius: 2,
     },
     sourceTitle: {
+        fontSize: 11,
+        fontWeight: '500',
         flex: 1,
-        fontSize: 12,
     },
     fallbackNotice: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
         padding: 10,
-        borderRadius: 8,
+        borderRadius: 10,
         borderWidth: 1,
-        marginTop: 8,
+        marginTop: 10,
     },
     fallbackText: {
-        fontSize: 12,
+        fontSize: 11,
         flex: 1,
+        lineHeight: 16,
     },
     verificationBadge: {
         flexDirection: 'row',
@@ -248,14 +238,15 @@ const styles = StyleSheet.create({
         gap: 6,
         paddingVertical: 6,
         paddingHorizontal: 10,
-        borderRadius: 16,
+        borderRadius: 12,
         borderWidth: 1,
-        marginBottom: 12,
+        marginBottom: 14,
         alignSelf: 'flex-start',
     },
     verificationText: {
-        fontSize: 11,
-        fontWeight: '600',
+        fontSize: 10,
+        fontWeight: '700',
+        letterSpacing: 0.2,
     },
     agentBadge: {
         flexDirection: 'row',
@@ -263,16 +254,15 @@ const styles = StyleSheet.create({
         gap: 4,
         paddingVertical: 2,
         paddingHorizontal: 8,
-        borderRadius: 12,
+        borderRadius: 10,
         borderWidth: 1,
         alignSelf: 'flex-start',
-        marginTop: 4,
     },
     agentBadgeText: {
-        fontSize: 10,
-        fontWeight: '600',
+        fontSize: 9,
+        fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.3,
+        letterSpacing: 0.4,
     },
 });
 

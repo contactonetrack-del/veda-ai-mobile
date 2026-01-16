@@ -364,22 +364,9 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
         if (isUser) {
             return (
                 <View style={styles.userMessageContainer}>
-                    <View style={styles.userCard}>
-                        <LinearGradient
-                            colors={['#1D4ED8', '#1E40AF']}
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 0 }}
-                            style={styles.userHeader}
-                        >
-                            <Text style={styles.userTimestamp}>{formatTime(item.timestamp)}</Text>
-                            <Text style={styles.userName}>You</Text>
-                            <View style={styles.userIconContainer}>
-                                <Ionicons name="person" size={12} color="#fff" />
-                            </View>
-                        </LinearGradient>
-                        <View style={styles.userContent}>
-                            <Text style={styles.userMessageText}>{item.content}</Text>
-                        </View>
+                    <View style={[styles.userBubble, { backgroundColor: isDark ? '#1E3A8A' : '#DBEAFE' }]}>
+                        <Text style={[styles.userMessageText, { color: isDark ? '#FFFFFF' : '#1E40AF' }]}>{item.content}</Text>
+                        <Text style={[styles.userTimestampSmall, { color: isDark ? 'rgba(255,255,255,0.5)' : 'rgba(30,64,175,0.5)' }]}>{formatTime(item.timestamp)}</Text>
                     </View>
                 </View>
             );
@@ -387,22 +374,18 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
 
         return (
             <View style={styles.aiMessageContainer}>
-                <View style={[styles.aiCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                    <View style={[styles.aiHeader, { backgroundColor: colors.inputBg, borderBottomColor: colors.cardBorder }]}>
-                        <View style={[styles.aiIconContainer, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.2)' }]}>
-                            <MaterialCommunityIcons name="meditation" size={14} color={colors.primary} />
-                        </View>
-                        <Text style={[styles.aiName, { color: colors.text }]}>VEDA AI</Text>
-                        {item.agentUsed && (
-                            <AgentBadge agent={item.agentUsed} intent={item.intent} />
-                        )}
-                        <View style={{ flex: 1 }} />
-                        <Text style={[styles.aiTimestamp, { color: colors.subtext }]}>{formatTime(item.timestamp)}</Text>
+                <View style={styles.aiMessageWrapper}>
+                    <View style={[styles.aiAvatar, { backgroundColor: colors.inputBg, borderColor: colors.cardBorder }]}>
+                        <MaterialCommunityIcons name="meditation" size={16} color={colors.primary} />
                     </View>
-                    <View style={[styles.aiContent, { backgroundColor: colors.card }]}>
-                        <Markdown style={isDark ? markdownStyles : markdownStylesLight}>
-                            {item.content}
-                        </Markdown>
+                    <View style={styles.aiContentBody}>
+                        <Text style={[styles.aiNameSmall, { color: colors.subtext }]}>VEDA AI</Text>
+                        <View style={styles.aiMarkdownWrapper}>
+                            <Markdown style={isDark ? markdownStyles : markdownStylesLight}>
+                                {item.content}
+                            </Markdown>
+                        </View>
+
                         {item.sources && item.sources.length > 0 && (
                             <SourcesCitation
                                 sources={item.sources}
@@ -410,41 +393,50 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                                 confidence={item.confidence}
                             />
                         )}
-                        <TouchableOpacity
-                            style={styles.voiceButton}
-                            onPress={async () => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                if (currentlySpeaking === item.id) {
-                                    await SpeechService.stop();
-                                    setCurrentlySpeaking(null);
-                                } else {
-                                    setCurrentlySpeaking(item.id);
-                                    // Strip markdown for speech
-                                    const cleanText = item.content.replace(/[*#_`]/g, '');
-                                    await SpeechService.speak(
-                                        cleanText,
-                                        selectedLanguage,
-                                        voiceSettings.gender,
-                                        voiceSettings.rate,
-                                        voiceSettings.pitch,
-                                        () => {
-                                            setCurrentlySpeaking(null);
-                                        }
-                                    );
-                                }
-                            }}
-                        >
-                            <Ionicons
-                                name={currentlySpeaking === item.id ? "stop-circle" : "volume-high-outline"}
-                                size={18}
-                                color={currentlySpeaking === item.id ? "#10B981" : "#94A3B8"}
-                            />
-                            {currentlySpeaking === item.id && (
-                                <Text style={styles.speakingText}>Speaking...</Text>
-                            )}
-                        </TouchableOpacity>
-                    </View>
 
+                        <View style={styles.aiActionRow}>
+                            <TouchableOpacity
+                                style={styles.actionIconButton}
+                                onPress={async () => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    if (currentlySpeaking === item.id) {
+                                        await SpeechService.stop();
+                                        setCurrentlySpeaking(null);
+                                    } else {
+                                        setCurrentlySpeaking(item.id);
+                                        const cleanText = item.content.replace(/[*#_`]/g, '');
+                                        await SpeechService.speak(
+                                            cleanText,
+                                            selectedLanguage,
+                                            voiceSettings.gender,
+                                            voiceSettings.rate,
+                                            voiceSettings.pitch,
+                                            () => {
+                                                setCurrentlySpeaking(null);
+                                            }
+                                        );
+                                    }
+                                }}
+                            >
+                                <Ionicons
+                                    name={currentlySpeaking === item.id ? "stop-circle" : "volume-high-outline"}
+                                    size={18}
+                                    color={currentlySpeaking === item.id ? colors.primary : colors.subtext}
+                                />
+                                {currentlySpeaking === item.id && (
+                                    <Text style={[styles.speakingTextSmall, { color: colors.primary }]}>Speaking...</Text>
+                                )}
+                            </TouchableOpacity>
+
+                            {item.agentUsed && (
+                                <View style={{ marginLeft: 8 }}>
+                                    <AgentBadge agent={item.agentUsed} intent={item.intent} />
+                                </View>
+                            )}
+                            <View style={{ flex: 1 }} />
+                            <Text style={[styles.aiTimestampSmall, { color: colors.subtext }]}>{formatTime(item.timestamp)}</Text>
+                        </View>
+                    </View>
                 </View>
             </View>
         );
@@ -641,11 +633,11 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 */}
 
 
-                {/* Input */}
-                <View style={[styles.inputContainer, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
-                    <View style={[styles.inputWrapper, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+                {/* Input Capsule */}
+                <View style={[styles.inputArea, { backgroundColor: colors.background }]}>
+                    <View style={[styles.inputCapsule, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
                         <TextInput
-                            style={[styles.input, { color: colors.text }]}
+                            style={[styles.inputField, { color: colors.text }]}
                             value={input}
                             onChangeText={setInput}
                             placeholder={t('type_message')}
@@ -654,39 +646,48 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                             maxLength={1000}
                             editable={!isRecording}
                         />
+
+                        <View style={styles.inputActions}>
+                            {/* Microphone Button */}
+                            <TouchableOpacity
+                                style={[
+                                    styles.capsuleActionButton,
+                                    isRecording && styles.micActive
+                                ]}
+                                onPress={handleVoiceInput}
+                                disabled={loading}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons
+                                    name={isRecording ? "stop-circle" : "mic-outline"}
+                                    size={20}
+                                    color={isRecording ? "#EF4444" : colors.primary}
+                                />
+                            </TouchableOpacity>
+
+                            {/* Send Button */}
+                            <TouchableOpacity
+                                style={[
+                                    styles.sendIconWrapper,
+                                    (!input.trim() || isRecording || loading) && styles.sendIconDisabled
+                                ]}
+                                onPress={handleSend}
+                                disabled={loading || !input.trim() || isRecording}
+                                activeOpacity={0.7}
+                            >
+                                <LinearGradient
+                                    colors={input.trim() && !isRecording && !loading ? ['#3B82F6', '#1D4ED8'] : [colors.inputBorder, colors.inputBorder]}
+                                    style={styles.sendIconGradient}
+                                >
+                                    <Ionicons
+                                        name="arrow-up"
+                                        size={18}
+                                        color={input.trim() && !isRecording && !loading ? '#fff' : colors.subtext}
+                                    />
+                                </LinearGradient>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-
-                    {/* Microphone Button */}
-                    <TouchableOpacity
-                        style={[
-                            styles.micButtonWrapper,
-                            isRecording && styles.micButtonRecording
-                        ]}
-                        onPress={handleVoiceInput}
-                        disabled={loading}
-                        activeOpacity={0.8}
-                    >
-                        <Ionicons
-                            name={isRecording ? "stop-circle" : "mic-outline"}
-                            size={22}
-                            color={isRecording ? "#fff" : "#10B981"}
-                        />
-                    </TouchableOpacity>
-
-                    {/* Send Button */}
-                    <TouchableOpacity
-                        style={styles.sendButtonWrapper}
-                        onPress={handleSend}
-                        disabled={loading || !input.trim() || isRecording}
-                        activeOpacity={0.8}
-                    >
-                        <LinearGradient
-                            colors={input.trim() && !isRecording ? ['#3B82F6', '#1D4ED8'] : ['#1E293B', '#1E293B']}
-                            style={[styles.sendButton, (!input.trim() || isRecording) && styles.sendButtonDisabled]}
-                        >
-                            <Ionicons name="arrow-up" size={20} color={input.trim() && !isRecording ? '#fff' : '#475569'} />
-                        </LinearGradient>
-                    </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
 
@@ -885,122 +886,108 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    // Messages
-    messageList: { paddingHorizontal: 12, paddingVertical: 16, paddingBottom: 8 },
-    userMessageContainer: { alignItems: 'flex-end', marginBottom: 16, paddingLeft: 40 },
-    userCard: {
-        backgroundColor: '#1E3A8A',
-        borderRadius: 14,
-        overflow: 'hidden',
-        shadowColor: '#3B82F6',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    userHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
-    },
-    userTimestamp: { fontSize: 10, color: 'rgba(255,255,255,0.6)', flex: 1 },
-    userName: { fontSize: 13, fontWeight: '600', color: '#fff', marginRight: 8 },
-    userIconContainer: {
-        width: 22,
-        height: 22,
-        borderRadius: 6,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    userContent: { paddingHorizontal: 14, paddingVertical: 12 },
-    userMessageText: { color: '#FFFFFF', fontSize: 15, lineHeight: 22 },
-    aiMessageContainer: { marginBottom: 16, paddingRight: 40 },
-    aiCard: {
-        backgroundColor: '#0F172A',
-        borderRadius: 14,
-        borderWidth: 1,
-        borderColor: '#1E293B',
-        overflow: 'hidden',
-    },
-    aiHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
+    // Messages Clean Layout
+    messageList: { paddingHorizontal: 16, paddingVertical: 20 },
+    userMessageContainer: { alignItems: 'flex-end', marginBottom: 20 },
+    userBubble: {
+        paddingHorizontal: 16,
         paddingVertical: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#1E293B',
+        borderRadius: 20,
+        borderBottomRightRadius: 4,
+        maxWidth: '85%',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 2,
+        elevation: 1,
     },
-    aiIconContainer: {
-        width: 24,
-        height: 24,
-        borderRadius: 6,
-        backgroundColor: 'rgba(16, 185, 129, 0.15)',
+    userMessageText: { fontSize: 15, lineHeight: 22 },
+    userTimestampSmall: { fontSize: 9, opacity: 0.6, alignSelf: 'flex-end', marginTop: 4 },
+
+    aiMessageContainer: { marginBottom: 24 },
+    aiMessageWrapper: { flexDirection: 'row', alignItems: 'flex-start' },
+    aiAvatar: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        borderWidth: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 8,
+        marginRight: 12,
+        marginTop: 2,
     },
-    aiName: { fontSize: 13, fontWeight: '600', color: '#E2E8F0', flex: 1 },
-    aiStatusDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 8 },
-    aiTimestamp: { fontSize: 10, color: '#64748B' },
-    aiContent: { paddingHorizontal: 14, paddingVertical: 14 },
+    aiContentBody: { flex: 1 },
+    aiNameSmall: { fontSize: 11, fontWeight: '700', marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+    aiMarkdownWrapper: { marginBottom: 0 },
+    aiActionRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+    actionIconButton: { flexDirection: 'row', alignItems: 'center', padding: 4 },
+    speakingTextSmall: { fontSize: 10, fontWeight: '600', marginLeft: 6 },
+    aiTimestampSmall: { fontSize: 10, opacity: 0.6 },
+
     // Typing
-    typingContainer: { paddingHorizontal: 12, paddingBottom: 8 },
+    typingContainer: { paddingHorizontal: 16, paddingBottom: 12 },
     typingBubble: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#0F172A',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: 12,
+        backgroundColor: 'transparent',
         alignSelf: 'flex-start',
-        borderWidth: 1,
-        borderColor: '#1E293B',
     },
-    typingText: { color: '#94A3B8', fontSize: 12, marginLeft: 8 },
-    // Input
-    inputContainer: {
+    typingText: { color: '#94A3B8', fontSize: 12, marginLeft: 10, fontWeight: '500' },
+
+    // Integrated Input Area
+    inputArea: {
+        paddingHorizontal: 16,
+        paddingBottom: Platform.OS === 'ios' ? 24 : 16,
+        paddingTop: 8,
+    },
+    inputCapsule: {
         flexDirection: 'row',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        backgroundColor: '#0F172A',
-        borderTopWidth: 1,
-        borderTopColor: '#1E293B',
         alignItems: 'flex-end',
-    },
-    inputWrapper: {
-        flex: 1,
-        backgroundColor: '#1E293B',
-        borderRadius: 20,
+        borderRadius: 28,
         borderWidth: 1,
-        borderColor: '#334155',
-        paddingHorizontal: 14,
-        marginRight: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        minHeight: 52,
     },
-    input: { color: '#F8FAFC', fontSize: 15, maxHeight: 100, paddingTop: 10, paddingBottom: 10 },
-    micButtonWrapper: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: '#1E293B',
+    inputField: {
+        flex: 1,
+        fontSize: 16,
+        maxHeight: 120,
+        paddingTop: 8,
+        paddingBottom: 8,
+        marginRight: 8,
+    },
+    inputActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 2,
+    },
+    capsuleActionButton: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 8,
-        marginBottom: 2,
-        borderWidth: 1,
-        borderColor: '#334155',
     },
-    micButtonRecording: {
-        backgroundColor: '#DC2626',
-        borderColor: '#DC2626',
+    micActive: {
+        backgroundColor: 'rgba(239, 68, 68, 0.1)',
     },
-    sendButtonWrapper: { marginBottom: 2 },
-    sendButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' },
-    sendButtonDisabled: { borderWidth: 1, borderColor: '#334155' },
+    sendIconWrapper: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        overflow: 'hidden',
+    },
+    sendIconGradient: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    sendIconDisabled: {
+        opacity: 0.4,
+    },
     // Modal
     modalOverlay: {
         flex: 1,
