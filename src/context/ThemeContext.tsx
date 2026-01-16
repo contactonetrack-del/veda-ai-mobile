@@ -1,6 +1,6 @@
 /**
  * Theme Context
- * Manages light/dark mode state
+ * Manages system/light/dark mode state with ChatGPT-style theme picker
  */
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
@@ -8,13 +8,16 @@ import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors, ThemeColors } from '../config/colors';
 
+// Theme preference: 'system' follows device, 'light'/'dark' are explicit
+export type ThemePreference = 'system' | 'light' | 'dark';
 type ThemeType = 'light' | 'dark';
 
 interface ThemeContextType {
-    theme: ThemeType;
+    theme: ThemeType;  // Actual theme being used
+    themePreference: ThemePreference;  // User's preference (system/light/dark)
     colors: ThemeColors;
     toggleTheme: () => void;
-    setTheme: (theme: ThemeType) => void;
+    setThemePreference: (preference: ThemePreference) => void;
     isDark: boolean;
 }
 
@@ -22,15 +25,26 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const systemScheme = useColorScheme();
-    const [theme, setThemeState] = useState<ThemeType>('dark'); // Default to dark for premium look
+    const [themePreference, setThemePreferenceState] = useState<ThemePreference>('system');
 
-    // Load saved theme
+    // Calculate actual theme based on preference
+    const getActualTheme = (preference: ThemePreference): ThemeType => {
+        if (preference === 'system') {
+            return systemScheme === 'light' ? 'light' : 'dark';
+        }
+        return preference;
+    };
+
+    const [theme, setTheme] = useState<ThemeType>(() => getActualTheme(themePreference));
+
+    // Load saved theme preference
     useEffect(() => {
         const loadTheme = async () => {
             try {
-                const savedTheme = await AsyncStorage.getItem('appTheme');
-                if (savedTheme) {
-                    setThemeState(savedTheme as ThemeType);
+                const savedPreference = await AsyncStorage.getItem('appThemePreference');
+                if (savedPreference) {
+                    setThemePreferenceState(savedPreference as ThemePreference);
+                    setTheme(getActualTheme(savedPreference as ThemePreference));
                 }
             } catch (error) {
                 console.log('Error loading theme:', error);
@@ -39,14 +53,25 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         loadTheme();
     }, []);
 
-    const setTheme = async (newTheme: ThemeType) => {
-        setThemeState(newTheme);
-        await AsyncStorage.setItem('appTheme', newTheme);
+    // Update theme when system preference changes (only if using 'system' mode)
+    useEffect(() => {
+        if (themePreference === 'system') {
+            setTheme(systemScheme === 'light' ? 'light' : 'dark');
+        }
+    }, [systemScheme, themePreference]);
+
+    const setThemePreference = async (preference: ThemePreference) => {
+        setThemePreferenceState(preference);
+        setTheme(getActualTheme(preference));
+        await AsyncStorage.setItem('appThemePreference', preference);
     };
 
     const toggleTheme = () => {
-        const newTheme = theme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
+        // Cycle through: system -> light -> dark -> system
+        const nextPreference: ThemePreference =
+            themePreference === 'system' ? 'light' :
+                themePreference === 'light' ? 'dark' : 'system';
+        setThemePreference(nextPreference);
     };
 
     const themeColors = colors[theme];
@@ -54,9 +79,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return (
         <ThemeContext.Provider value={{
             theme,
+            themePreference,
             colors: themeColors,
             toggleTheme,
-            setTheme,
+            setThemePreference,
             isDark: theme === 'dark'
         }}>
             {children}
