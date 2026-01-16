@@ -32,7 +32,19 @@
     },
     "plugins": [
       "expo-router",
-      "expo-font"
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#212121",
+          "image": "./assets/veda-avatar.png",
+          "dark": {
+            "image": "./assets/veda-avatar.png",
+            "backgroundColor": "#212121"
+          },
+          "imageWidth": 200
+        }
+      ]
     ],
     "extra": {
       "router": {},
