@@ -12,6 +12,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
 import { TouchableOpacity } from 'react-native';
+import { GlassView } from '../components/common/GlassView';
 
 export default function AboutScreen() {
     const { colors, isDark } = useTheme();
@@ -39,7 +40,7 @@ export default function AboutScreen() {
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {/* Premium Logo Card */}
-                <View style={[styles.logoCard, { borderColor: colors.cardBorder, backgroundColor: colors.card }]}>
+                <GlassView style={styles.logoCard} intensity={40}>
                     <View style={[styles.logoBackground, { backgroundColor: colors.primary }]}>
                         <MaterialCommunityIcons name="meditation" size={48} color="#fff" />
                     </View>
@@ -53,33 +54,33 @@ export default function AboutScreen() {
                     <Text style={[styles.tagline, { color: colors.subtext }]}>
                         Ancient Wisdom • Modern Intelligence
                     </Text>
-                </View>
+                </GlassView>
 
                 {/* Features Grid */}
                 <Text style={[styles.sectionTitle, { color: colors.subtext }]}>KEY FEATURES</Text>
                 <View style={styles.featuresGrid}>
                     {features.map((feat, idx) => (
-                        <View key={idx} style={[styles.featureCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                        <GlassView key={idx} style={styles.featureCard} intensity={30}>
                             <View style={[styles.featureIcon, { backgroundColor: `${feat.color}20` }]}>
                                 <Ionicons name={feat.icon as any} size={24} color={feat.color} />
                             </View>
                             <Text style={[styles.featureTitle, { color: colors.text }]}>{feat.title}</Text>
                             <Text style={[styles.featureDesc, { color: colors.subtext }]}>{feat.desc}</Text>
-                        </View>
+                        </GlassView>
                     ))}
                 </View>
 
                 {/* Mission Card */}
-                <View style={[styles.missionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <GlassView style={styles.missionCard} intensity={30}>
                     <Text style={[styles.missionTitle, { color: colors.text }]}>Our Mission</Text>
                     <Text style={[styles.missionText, { color: colors.subtext }]}>
                         To democratize AI wellness guidance for every Indian household, in every language,
                         completely free of cost. Powered by open-source models and community innovation.
                     </Text>
-                </View>
+                </GlassView>
 
                 {/* Tech Stack */}
-                <View style={[styles.techCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <GlassView style={styles.techCard} intensity={30}>
                     <Text style={[styles.sectionHeader, { color: colors.subtext }]}>POWERED BY</Text>
                     <View style={styles.techTags}>
                         {['React Native', 'FastAPI', 'Whisper ASR', 'MMS TTS', 'DeepSeek-R1', 'Firebase'].map((tech, i) => (
@@ -88,10 +89,10 @@ export default function AboutScreen() {
                             </View>
                         ))}
                     </View>
-                </View>
+                </GlassView>
 
                 {/* Credits */}
-                <View style={[styles.creditsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <GlassView style={styles.creditsCard} intensity={30}>
                     <Text style={[styles.sectionHeader, { color: colors.subtext }]}>COMPANY</Text>
                     <Text style={[styles.developerName, { color: colors.text }]}>One Track</Text>
 
@@ -99,7 +100,7 @@ export default function AboutScreen() {
                     <Text style={[styles.developerName, { color: colors.text }]}>Shiney</Text>
 
                     <Text style={[styles.developerInfo, { color: colors.subtext, marginTop: 16 }]}>Made with ❤️ in India 🇮🇳</Text>
-                </View>
+                </GlassView>
 
                 {/* Footer */}
                 <Text style={[styles.footer, { color: colors.subtext }]}>© 2026 VEDA AI. All rights reserved.</Text>
@@ -134,8 +135,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         padding: 24,
         borderRadius: 20,
-        borderWidth: 1,
         marginBottom: 24,
+        overflow: 'hidden',
     },
     logoBackground: {
         width: 90,
@@ -164,8 +165,8 @@ const styles = StyleSheet.create({
         width: '47%',
         padding: 16,
         borderRadius: 16,
-        borderWidth: 1,
         alignItems: 'center',
+        overflow: 'hidden',
     },
     featureIcon: {
         width: 48,
@@ -179,19 +180,19 @@ const styles = StyleSheet.create({
     featureDesc: { fontSize: 11, textAlign: 'center', marginTop: 4 },
 
     // Mission
-    missionCard: { padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+    missionCard: { padding: 20, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
     missionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 10 },
     missionText: { fontSize: 14, lineHeight: 22 },
 
     // Tech
-    techCard: { padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+    techCard: { padding: 20, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
     sectionHeader: { fontSize: 11, fontWeight: '700', marginBottom: 12, letterSpacing: 1 },
     techTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     techTag: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 },
     techTagText: { fontSize: 11, fontWeight: '600', color: '#60A5FA' },
 
     // Credits
-    creditsCard: { padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+    creditsCard: { padding: 20, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
     developerName: { fontSize: 16, fontWeight: '700' },
     developerInfo: { fontSize: 14, marginTop: 4 },
 

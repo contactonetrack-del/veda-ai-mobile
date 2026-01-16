@@ -33,6 +33,7 @@ interface SidebarDrawerProps {
     onClose: () => void;
     onNewChat: () => void;
     onSelectChat: (chatId: string) => void;
+    onSelectContextDocument?: (document: any) => void;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -50,7 +51,7 @@ const getDaysDifference = (d1: Date, d2: Date) => {
     return Math.ceil(timeDiff / (1000 * 3600 * 24));
 };
 
-export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat }: SidebarDrawerProps) {
+export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat, onSelectContextDocument }: SidebarDrawerProps) {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const { user, logout } = useAuth();
@@ -423,7 +424,10 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                                 >
                                     <TouchableOpacity
                                         style={[styles.historyItem, { backgroundColor: colors.background }]}
-                                        onPress={() => onSelectChat(item.id)}
+                                        onPress={() => {
+                                            Haptics.selectionAsync();
+                                            onSelectChat(item.id);
+                                        }}
                                         accessibilityLabel={`Chat: ${item.title}`}
                                         accessibilityRole="button"
                                         accessibilityHint="Double tap to open this chat"
@@ -467,6 +471,7 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                                 <TouchableOpacity
                                     style={[styles.newChatRow, { borderColor: colors.cardBorder }]}
                                     onPress={() => {
+                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                         onNewChat();
                                         onClose();
                                     }}
@@ -519,7 +524,10 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                     <View style={[styles.footer, { borderTopColor: colors.cardBorder }]}>
                         <TouchableOpacity
                             style={styles.knowledgeButton}
-                            onPress={() => setShowKnowledgeModal(true)}
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setShowKnowledgeModal(true);
+                            }}
                         >
                             <Ionicons name="library" size={20} color={colors.primary} />
                             <Text style={[styles.knowledgeText, { color: colors.text }]}>Knowledge Base</Text>
@@ -531,6 +539,7 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                         <TouchableOpacity
                             style={styles.userRow}
                             onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 onClose();
                                 // @ts-ignore
                                 navigation.navigate('Settings');
@@ -556,7 +565,15 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                     </View>
                 </Animated.View>
             </View>
-            <KnowledgeBaseModal visible={showKnowledgeModal} onClose={() => setShowKnowledgeModal(false)} />
+            <KnowledgeBaseModal
+                visible={showKnowledgeModal}
+                onClose={() => setShowKnowledgeModal(false)}
+                onSelectDocument={(doc) => {
+                    onSelectContextDocument?.(doc);
+                    setShowKnowledgeModal(false);
+                    onClose(); // Close sidebar too
+                }}
+            />
         </Modal>
     );
 }

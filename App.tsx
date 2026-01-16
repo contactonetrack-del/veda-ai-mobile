@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -14,29 +15,60 @@ import ToastProvider from './src/components/common/Toast';
 import AuthScreen from './src/screens/AuthScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
 import RootNavigator from './src/navigation/RootNavigator';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Image } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Asset } from 'expo-asset';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
+
 
 function AppContent() {
   const { user, isLoading, logout } = useAuth();
   const [showApp, setShowApp] = useState(false);
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
 
+  const [appIsReady, setAppIsReady] = useState(false);
+
   React.useEffect(() => {
-    async function checkFirstLaunch() {
+    async function prepare() {
       try {
+        // Preload assets
+        const imageAssets = [
+          require('./assets/onboarding-1.png'),
+          require('./assets/onboarding-2.png'),
+          require('./assets/onboarding-3.png'),
+          require('./assets/veda-avatar.png'),
+          require('./assets/veda-premium-icon.png'),
+        ];
+
+        const cacheImages = imageAssets.map(image => {
+          return Asset.fromModule(image).downloadAsync();
+        });
+
+        await Promise.all([...cacheImages]);
+
+        // Artificial delay for splash screen if needed, or just let it finish
+        // await new Promise(resolve => setTimeout(resolve, 2000));
+
         const value = await AsyncStorage.getItem('alreadyLaunched');
         if (value === null) {
           setIsFirstLaunch(true);
         } else {
           setIsFirstLaunch(false);
         }
-      } catch (error) {
-        setIsFirstLaunch(false);
+      } catch (e) {
+        console.warn(e);
+        setIsFirstLaunch(false); // Default to main app on error to avoid active blocking
+      } finally {
+        setAppIsReady(true);
       }
     }
-    checkFirstLaunch();
+
+    prepare();
   }, []);
+
 
   const completeOnboarding = async () => {
     try {
@@ -47,13 +79,16 @@ function AppContent() {
     }
   };
 
-  if (isLoading || isFirstLaunch === null) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#10B981" />
-      </View>
-    );
+  const onLayoutRootView = React.useCallback(async () => {
+    if (appIsReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [appIsReady]);
+
+  if (!appIsReady || isFirstLaunch === null) {
+    return null; // SplashScreen is visible
   }
+
 
   // Show onboarding if it's the first launch
   if (isFirstLaunch) {
@@ -96,16 +131,18 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <ThemeProvider>
-          <LanguageProvider>
-            <ToastProvider>
-              <StatusBar style="light" />
-              <AppContent />
-            </ToastProvider>
-          </LanguageProvider>
-        </ThemeProvider>
-      </AuthProvider>
+      <GestureHandlerRootView style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <AuthProvider>
+          <ThemeProvider>
+            <LanguageProvider>
+              <ToastProvider>
+                <StatusBar style="light" />
+                <AppContent />
+              </ToastProvider>
+            </LanguageProvider>
+          </ThemeProvider>
+        </AuthProvider>
+      </GestureHandlerRootView>
     </SafeAreaProvider>
   );
 }

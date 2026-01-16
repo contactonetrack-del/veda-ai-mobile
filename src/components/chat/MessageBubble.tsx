@@ -42,6 +42,7 @@ interface MessageBubbleProps {
     onInteract?: () => void;
     onReply?: () => void;
     onDelete?: () => void;
+    index?: number;
 }
 
 const MessageBubble = ({
@@ -57,6 +58,7 @@ const MessageBubble = ({
     onInteract,
     onReply,
     onDelete,
+    index = 0,
 }: MessageBubbleProps) => {
     const { colors, theme, isDark } = useTheme();
     const isUser = role === 'user';
@@ -75,12 +77,14 @@ const MessageBubble = ({
                 duration: duration.normal,
                 easing: easing.easeOut,
                 useNativeDriver: true,
+                delay: index * 50, // Staggered delay based on index
             }),
             Animated.timing(slideAnim, {
                 toValue: 0,
                 duration: duration.normal,
                 easing: easing.easeOutCubic,
                 useNativeDriver: true,
+                delay: index * 50,
             }),
             Animated.timing(scaleAnim, {
                 toValue: 1,

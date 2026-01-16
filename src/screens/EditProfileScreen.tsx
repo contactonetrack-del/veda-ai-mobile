@@ -27,6 +27,8 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 
+import { GlassView } from '../components/common/GlassView';
+
 export default function EditProfileScreen() {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -140,7 +142,7 @@ export default function EditProfileScreen() {
                 </View>
 
                 {/* Form Fields */}
-                <View style={styles.formContainer}>
+                <GlassView style={styles.formContainer} intensity={30}>
                     <View style={styles.inputGroup}>
                         <Text style={[styles.label, { color: colors.subtext }]}>{t('full_name')}</Text>
                         <TextInput
@@ -174,7 +176,7 @@ export default function EditProfileScreen() {
                             placeholderTextColor={colors.subtext}
                         />
                     </View>
-                </View>
+                </GlassView>
 
             </ScrollView>
         </SafeAreaView>
@@ -246,6 +248,9 @@ const styles = StyleSheet.create({
     },
     formContainer: {
         gap: 24,
+        padding: 20,
+        borderRadius: 20,
+        overflow: 'hidden',
     },
     inputGroup: {
         gap: 8,

@@ -4,7 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../context/AuthContext';
+import { GlassView } from '../common/GlassView';
 
 interface ChatHeaderProps {
     onOpenSidebar: () => void;
@@ -19,21 +21,29 @@ export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'V
     const { user } = useAuth();
 
     return (
-        <View style={[
-            styles.container,
-            {
-                backgroundColor: colors.background,
-                paddingTop: insets.top,
-                borderBottomColor: isDark ? '#2F2F2F' : '#E5E5E5',
-            }
-        ]}>
+        <GlassView
+            intensity={80}
+            border={false}
+            style={[
+                styles.container,
+                {
+                    paddingTop: insets.top,
+                    backgroundColor: colors.glass, // Use semi-transparent glass color
+                    borderBottomColor: colors.glassBorder,
+                    borderBottomWidth: 1,
+                }
+            ]}
+        >
             <View
                 style={styles.content}
                 accessibilityRole="header"
             >
                 {/* Left: Hamburger (Circular) */}
                 <TouchableOpacity
-                    onPress={onOpenSidebar}
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        onOpenSidebar();
+                    }}
                     style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8' }]}
                     accessibilityLabel="Open sidebar menu"
                     accessibilityRole="button"
@@ -54,7 +64,10 @@ export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'V
                 {/* Right: Profile */}
                 <View style={styles.rightRow}>
                     <TouchableOpacity
-                        onPress={() => navigation.navigate('Settings')}
+                        onPress={() => {
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            navigation.navigate('Settings');
+                        }}
                         style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8', marginLeft: 8 }]}
                         accessibilityLabel="Open settings and profile"
                         accessibilityRole="button"
@@ -70,7 +83,7 @@ export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'V
                     </TouchableOpacity>
                 </View>
             </View>
-        </View>
+        </GlassView>
     );
 }
 

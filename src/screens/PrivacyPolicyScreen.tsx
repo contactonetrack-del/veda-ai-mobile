@@ -6,6 +6,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { GlassView } from '../components/common/GlassView';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigation } from '@react-navigation/native';
@@ -25,31 +26,35 @@ export default function PrivacyPolicyScreen() {
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('privacy_policy')}</Text>
             </View>
 
+
+
             <ScrollView
                 style={styles.content}
                 contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
                 showsVerticalScrollIndicator={false}
             >
-                <Text style={[styles.lastUpdated, { color: colors.subtext }]}>Last Updated: Jan 10, 2026</Text>
+                <GlassView style={styles.card} intensity={20}>
+                    <Text style={[styles.lastUpdated, { color: colors.subtext }]}>Last Updated: Jan 10, 2026</Text>
 
-                <Text style={[styles.paragraph, { color: colors.text }]}>
-                    Your privacy is important to us. It is One Track's policy to respect your privacy regarding any information we may collect from you across our app, VEDA AI.
-                </Text>
+                    <Text style={[styles.paragraph, { color: colors.text }]}>
+                        Your privacy is important to us. It is One Track's policy to respect your privacy regarding any information we may collect from you across our app, VEDA AI.
+                    </Text>
 
-                <Text style={[styles.heading, { color: colors.text }]}>1. Information We Collect</Text>
-                <Text style={[styles.paragraph, { color: colors.text }]}>
-                    We collect information you provide directly to us, such as when you create an account, update your profile, or communicate with us. This may include your name, email address, and wellness preferences.
-                </Text>
+                    <Text style={[styles.heading, { color: colors.text }]}>1. Information We Collect</Text>
+                    <Text style={[styles.paragraph, { color: colors.text }]}>
+                        We collect information you provide directly to us, such as when you create an account, update your profile, or communicate with us. This may include your name, email address, and wellness preferences.
+                    </Text>
 
-                <Text style={[styles.heading, { color: colors.text }]}>2. How We Use Information</Text>
-                <Text style={[styles.paragraph, { color: colors.text }]}>
-                    We use the information we collect to provide, maintain, and improve our services, including to personalize your experience and provide AI-driven wellness insights.
-                </Text>
+                    <Text style={[styles.heading, { color: colors.text }]}>2. How We Use Information</Text>
+                    <Text style={[styles.paragraph, { color: colors.text }]}>
+                        We use the information we collect to provide, maintain, and improve our services, including to personalize your experience and provide AI-driven wellness insights.
+                    </Text>
 
-                <Text style={[styles.heading, { color: colors.text }]}>3. Data Security</Text>
-                <Text style={[styles.paragraph, { color: colors.text }]}>
-                    We maintain reasonable measures to protect your information from loss, theft, misuse, and unauthorized access.
-                </Text>
+                    <Text style={[styles.heading, { color: colors.text }]}>3. Data Security</Text>
+                    <Text style={[styles.paragraph, { color: colors.text }]}>
+                        We maintain reasonable measures to protect your information from loss, theft, misuse, and unauthorized access.
+                    </Text>
+                </GlassView>
 
                 <View style={{ height: 40 }} />
             </ScrollView>
@@ -71,4 +76,9 @@ const styles = StyleSheet.create({
     lastUpdated: { fontSize: 12, marginBottom: 20 },
     heading: { fontSize: 16, fontWeight: '700', marginTop: 20, marginBottom: 8 },
     paragraph: { fontSize: 15, lineHeight: 24 },
+    card: {
+        padding: 20,
+        borderRadius: 16,
+        overflow: 'hidden',
+    },
 });

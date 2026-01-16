@@ -13,6 +13,14 @@ export type ThemePreference = 'system' | 'light' | 'dark' | 'highContrast';
 export type MotionPreference = 'system' | 'reduced' | 'full';
 type ThemeType = 'light' | 'dark' | 'highContrast';
 
+// Glassmorphism Blur Intensities
+export const blurIntensity = {
+    subtle: 20,
+    medium: 50,
+    heavy: 80,
+    ultra: 95
+};
+
 interface ThemeContextType {
     theme: ThemeType;  // Actual theme being used
     themePreference: ThemePreference;  // User's preference (system/light/dark)

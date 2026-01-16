@@ -39,13 +39,20 @@ class VoiceInputService {
                 playsInSilentModeIOS: true,
             });
 
-            // Create and prepare the recording
-            const { recording } = await Audio.Recording.createAsync(
-                Audio.RecordingOptionsPresets.HIGH_QUALITY
-            );
+            // Create and prepare the recording with metering enabled
+            const options: any = {
+                ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
+                isMeteringEnabled: true,
+            };
+
+            const { recording } = await Audio.Recording.createAsync(options);
 
             this.recording = recording;
             this.isRecordingActive = true;
+
+            // Set update interval for smooth visualization (50ms)
+            await this.recording.setProgressUpdateInterval(50);
+
             console.log('Recording started');
             return true;
         } catch (error) {
@@ -125,6 +132,12 @@ class VoiceInputService {
             }
             this.recording = null;
             this.isRecordingActive = false;
+        }
+    }
+
+    public setStatusUpdateListener(callback: (status: Audio.RecordingStatus) => void): void {
+        if (this.recording) {
+            this.recording.setOnRecordingStatusUpdate(callback);
         }
     }
 }

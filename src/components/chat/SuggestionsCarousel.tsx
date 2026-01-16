@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     ScrollView,
     TouchableOpacity,
     Text,
     StyleSheet,
     View,
-    Animated,
 } from 'react-native';
+import Animated, { FadeInRight, FadeOut, Layout } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../../context/ThemeContext';
 import { spacing, borderRadius } from '../../config/spacing';
@@ -25,27 +25,18 @@ interface SuggestionsCarouselProps {
 
 export default function SuggestionsCarousel({ suggestions, onSelect, visible }: SuggestionsCarouselProps) {
     const { colors, isDark } = useTheme();
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const [shouldRender, setShouldRender] = useState(visible);
 
-    useEffect(() => {
-        if (visible) {
-            setShouldRender(true);
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 300,
-                useNativeDriver: true,
-            }).start();
-        } else {
-            Animated.timing(fadeAnim, {
-                toValue: 0,
-                duration: 200,
-                useNativeDriver: true,
-            }).start(() => setShouldRender(false));
-        }
-    }, [visible]);
+    if (!visible && suggestions.length === 0) return null;
+    // We can rely on 'visible' prop to mount/unmount or just render if visible.
+    // If we want exit animations when 'visible' becomes false, we need to keep rendering until exit finished.
+    // For simplicity, we'll assume the parent controls visibility, but normally we'd render <Animated.View> that hides.
+    // However, Reanimated Layout animations on mounting/unmounting items work best.
 
-    if (!shouldRender) return null;
+    // If visual toggle is needed, we can wrap in Animated.View.
+    // But here 'visible' likely toggles the component in ChatInputBar. 
+    // Let's wrap the ScrollView in an Animated View for overall fade, but use Reanimated for items.
+
+    if (!visible) return null;
 
     const handleSelect = (text: string) => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -53,29 +44,38 @@ export default function SuggestionsCarousel({ suggestions, onSelect, visible }: 
     };
 
     return (
-        <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+        <Animated.View
+            style={styles.container}
+            entering={FadeInRight.duration(300)}
+            exiting={FadeOut.duration(200)}
+        >
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
-                {suggestions.map((item) => (
-                    <TouchableOpacity
+                {suggestions.map((item, index) => (
+                    <Animated.View
                         key={item.id}
-                        style={[
-                            styles.chip,
-                            {
-                                backgroundColor: isDark ? colors.card : '#F5F5F5',
-                                borderColor: colors.cardBorder,
-                                borderWidth: isDark ? 1 : 0,
-                            }
-                        ]}
-                        onPress={() => handleSelect(item.text)}
+                        entering={FadeInRight.delay(index * 100).springify().damping(12)}
+                        layout={Layout.springify()}
                     >
-                        <Text style={[styles.chipText, { color: colors.text }]}>
-                            {item.text}
-                        </Text>
-                    </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.chip,
+                                {
+                                    backgroundColor: isDark ? colors.card : '#F5F5F5',
+                                    borderColor: colors.cardBorder,
+                                    borderWidth: isDark ? 1 : 0,
+                                }
+                            ]}
+                            onPress={() => handleSelect(item.text)}
+                        >
+                            <Text style={[styles.chipText, { color: colors.text }]}>
+                                {item.text}
+                            </Text>
+                        </TouchableOpacity>
+                    </Animated.View>
                 ))}
             </ScrollView>
         </Animated.View>
@@ -85,14 +85,16 @@ export default function SuggestionsCarousel({ suggestions, onSelect, visible }: 
 const styles = StyleSheet.create({
     container: {
         marginBottom: spacing[2],
+        height: 50, // Fixed height to prevent layout jumps
     },
     scrollContent: {
         paddingHorizontal: spacing[4],
         gap: spacing[2],
+        alignItems: 'center', // Center vertically
     },
     chip: {
         paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3], // Increased padding for better touch target
+        paddingVertical: spacing[3],
         borderRadius: borderRadius.full,
         justifyContent: 'center',
         alignItems: 'center',

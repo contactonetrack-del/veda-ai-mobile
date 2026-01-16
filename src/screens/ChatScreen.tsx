@@ -7,7 +7,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
-    FlatList,
     StyleSheet,
     KeyboardAvoidingView,
     Platform,
@@ -19,6 +18,7 @@ import {
     TouchableOpacity,
     Alert,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -61,6 +61,45 @@ interface Message {
     attachments?: Attachment[];
 }
 
+// Optimized wrapper to prevent re-renders
+const MessageItem = React.memo(({
+    item,
+    index,
+    messagesLength,
+    isStreaming,
+    onInteract,
+    onDelete,
+    onReply
+}: {
+    item: Message,
+    index: number,
+    messagesLength: number,
+    isStreaming: boolean,
+    onInteract: (msg: Message) => void,
+    onDelete: (msg: Message) => void,
+    onReply: (msg: Message) => void
+}) => {
+    // Memoize handlers for this specific item
+    const handleInteract = useCallback(() => onInteract(item), [item, onInteract]);
+    const handleDelete = useCallback(() => onDelete(item), [item, onDelete]);
+    const handleReply = useCallback(() => onReply(item), [item, onReply]);
+
+    return (
+        <MessageBubble
+            role={item.role}
+            content={item.content}
+            sources={item.sources}
+            attachments={item.attachments}
+            agentUsed={item.agentUsed}
+            isLatest={index === messagesLength - 1}
+            isTyping={isStreaming && index === messagesLength - 1}
+            onInteract={handleInteract}
+            onDelete={handleDelete}
+            onReply={handleReply}
+        />
+    );
+});
+
 export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
     const navigation = useNavigation();
     const { user } = useAuth();
@@ -71,7 +110,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
     const { language: selectedLanguage, setLanguage, t } = useLanguage();
     const { colors, isDark } = useTheme();
     const [showLanguageModal, setShowLanguageModal] = useState(false);
-    const flatListRef = useRef<FlatList>(null);
+    const flashListRef = useRef<any>(null);
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [currentlySpeaking, setCurrentlySpeaking] = useState<string | null>(null);
     const [isRecording, setIsRecording] = useState(false);
@@ -81,6 +120,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
     const [attachments, setAttachments] = useState<Attachment[]>([]);
     const [dynamicSuggestions, setDynamicSuggestions] = useState<{ id: string, text: string }[]>([]);
     const confettiRef = useRef<ConfettiRef>(null);
+    const [audioLevel, setAudioLevel] = useState(0);
 
 
 
@@ -142,7 +182,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
             }
             // Smoothly scroll to bottom when keyboard opens
             setTimeout(() => {
-                flatListRef.current?.scrollToEnd({ animated: true });
+                flashListRef.current?.scrollToEnd({ animated: true });
             }, 100);
         });
 
@@ -269,7 +309,9 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
     const handleVoiceInput = async () => {
         if (isRecording) {
             setIsRecording(false);
+            VoiceInputService.setStatusUpdateListener(() => { }); // Clear listener
             const uri = await VoiceInputService.stopRecording();
+            setAudioLevel(0);
             if (uri) {
                 setInput('Transcribing...');
                 const text = await VoiceInputService.transcribeAudio(uri, selectedLanguage);
@@ -280,12 +322,38 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
             if (started) {
                 setIsRecording(true);
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+                // Subscribe to audio levels
+                VoiceInputService.setStatusUpdateListener((status) => {
+                    if (status.metering !== undefined) {
+                        // Normalize -60dB to 0dB range to 0-1
+                        const db = status.metering;
+                        const normalized = Math.min(Math.max((db + 60) / 60, 0), 1);
+                        setAudioLevel(normalized);
+                    }
+                });
             }
         }
     };
 
     const handleNewChat = () => {
         setMessages([]); // Clear messages to show Empty State
+    };
+
+    const handleContextDocumentSelect = (doc: any) => {
+        const newAttachment: Attachment = {
+            id: Date.now().toString(),
+            uri: doc.id ? `kb://${doc.id}` : 'kb://unknown',
+            type: 'file',
+            name: doc.source ? `Ref: ${doc.source.substring(0, 20)}...` : 'Knowledge Context',
+        };
+        setAttachments(prev => [...prev, newAttachment]);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+        // Optional: Auto-populate input if empty
+        if (!input.trim()) {
+            setInput(`Using context from "${doc.source || 'document'}": `);
+        }
     };
 
     const handleLoadChat = async (chatId: string) => {
@@ -427,6 +495,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 onClose={() => setIsSidebarOpen(false)}
                 onNewChat={handleNewChat}
                 onSelectChat={handleLoadChat}
+                onSelectContextDocument={handleContextDocumentSelect}
             />
 
             {messages.length === 0 ? (
@@ -461,43 +530,39 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     </View>
                 </ScrollView>
             ) : (
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    renderItem={useCallback(({ item, index }: { item: Message, index: number }) => (
-                        <MessageBubble
-                            role={item.role}
-                            content={item.content}
-                            sources={item.sources}
-                            attachments={item.attachments}
-                            agentUsed={item.agentUsed}
-                            isLatest={index === messages.length - 1}
-                            isTyping={isStreaming && index === messages.length - 1}
-                            onInteract={() => handleMessageInteract(item)}
-                            onDelete={() => {
-                                setMessages(prev => prev.filter(m => m.id !== item.id));
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            }}
-                            onReply={() => {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setInput(`Replying to: "${item.content.substring(0, 50)}..." `);
-                            }}
-                        />
-                    ), [messages.length, isStreaming])}
-                    keyExtractor={item => item.id}
-                    contentContainerStyle={styles.messageList}
-                    onContentSizeChange={() => flatListRef.current?.scrollToEnd()}
-                    showsVerticalScrollIndicator={false}
-                    removeClippedSubviews={Platform.OS === 'android'}
-                    initialNumToRender={15}
-                    maxToRenderPerBatch={10}
-                    windowSize={10}
-                    getItemLayout={(data, index) => (
-                        { length: 150, offset: 150 * index, index } // Approximate height for scrolling performance
-                    )}
-                    ListFooterComponent={loading ? <SkeletonBubble /> : null}
-                />
-            )}
+                <View style={[styles.messageList, { flex: 1 }]}>
+                    <FlashList
+                        ref={flashListRef}
+                        data={messages}
+                        renderItem={({ item, index }) => (
+                            <MessageItem
+                                item={item}
+                                index={index}
+                                messagesLength={messages.length}
+                                isStreaming={isStreaming}
+                                onInteract={handleMessageInteract}
+                                onDelete={(msg: Message) => {
+                                    setMessages(prev => prev.filter(m => m.id !== msg.id));
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                }}
+                                onReply={(msg: Message) => {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setInput(`Replying to: "${msg.content.substring(0, 50)}..." `);
+                                }}
+                            />
+                        )}
+                        // @ts-ignore
+                        estimatedItemSize={150}
+                        keyExtractor={item => item.id}
+                        contentContainerStyle={{ paddingVertical: 16, paddingBottom: 40 }}
+                        onContentSizeChange={() => flashListRef.current?.scrollToEnd({ animated: true })}
+                        showsVerticalScrollIndicator={false}
+                        ListFooterComponent={loading ? <SkeletonBubble /> : null}
+                        extraData={[isStreaming, messages.length]} // Ensure updates when these change
+                    />
+                </View>
+            )
+            }
 
 
             <KeyboardAvoidingView
@@ -519,6 +584,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                         : dynamicSuggestions
                     }
                     onSuggestionSelect={handleSuggestionSelect}
+                    audioLevel={audioLevel}
                 />
             </KeyboardAvoidingView>
 
@@ -540,7 +606,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 onActionSelect={handleActionSelect}
                 messageContent={activeMessage?.content}
             />
-        </View>
+        </View >
     );
 }
 

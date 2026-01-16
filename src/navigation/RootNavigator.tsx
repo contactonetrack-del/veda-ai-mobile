@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { Easing } from 'react-native';
 
 // Screens
 import ChatScreen from '../screens/ChatScreen';
@@ -14,6 +15,7 @@ import AboutScreen from '../screens/AboutScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsScreen from '../screens/TermsScreen';
 import MemoryScreen from '../screens/MemoryScreen';
+import { useTheme } from '../context/ThemeContext';
 
 export type RootStackParamList = {
     Chat: undefined;
@@ -31,19 +33,73 @@ interface RootNavigatorProps {
     onLogout: () => void;
 }
 
+// Custom "Fluid Fade" Transition
+const FluidTransition = {
+    gestureDirection: 'horizontal' as const,
+    transitionSpec: {
+        open: {
+            animation: 'timing' as const,
+            config: {
+                duration: 400,
+                easing: Easing.out(Easing.poly(5)),
+            },
+        },
+        close: {
+            animation: 'timing' as const,
+            config: {
+                duration: 400,
+                easing: Easing.out(Easing.poly(5)),
+            },
+        },
+    },
+    cardStyleInterpolator: ({ current, next, layouts }: any) => {
+        return {
+            cardStyle: {
+                transform: [
+                    {
+                        translateX: current.progress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [layouts.screen.width, 0],
+                        }),
+                    },
+                    {
+                        scale: current.progress.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.95, 1],
+                        }),
+                    },
+                ],
+                opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 1],
+                }),
+            },
+            overlayStyle: {
+                opacity: current.progress.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, 0.5],
+                }),
+            },
+        };
+    },
+};
+
 export default function RootNavigator({ onLogout }: RootNavigatorProps) {
+    const { colors } = useTheme();
+
     return (
         <Stack.Navigator
             screenOptions={{
                 headerShown: false,
-                animation: 'slide_from_right',
+                ...FluidTransition, // Apply custom transition globally
+                contentStyle: { backgroundColor: colors.background },
             }}
             initialRouteName="Chat"
         >
             <Stack.Screen
                 name="Chat"
                 options={{
-                    animation: 'fade', // Smooth fade for the main screen
+                    // specific override if needed, but FluidTransition is good
                 }}
             >
                 {(props) => <ChatScreen {...props} onLogout={onLogout} />}
@@ -52,8 +108,8 @@ export default function RootNavigator({ onLogout }: RootNavigatorProps) {
             <Stack.Screen
                 name="Settings"
                 options={{
-                    presentation: 'modal',
-                    animation: 'slide_from_bottom',
+                    presentation: 'transparentModal', // Better for glass effects
+                    animation: 'fade', // Modal fade often looks cleaner
                 }}
             >
                 {(props) => <SettingsScreen {...props} onLogout={onLogout} />}

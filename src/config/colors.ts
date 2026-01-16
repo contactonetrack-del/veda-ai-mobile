@@ -181,6 +181,11 @@ export const colors = {
         online: '#34D399',
         offline: '#6B6B6B',
         busy: '#F59E0B',
+
+        // Glassmorphism
+        glass: 'rgba(30, 30, 30, 0.6)',
+        glassBorder: 'rgba(255, 255, 255, 0.08)',
+        glassActive: 'rgba(40, 40, 40, 0.8)',
     },
 
     // Premium Light Theme
@@ -235,6 +240,11 @@ export const colors = {
         online: '#059669',
         offline: '#9A9A9A',
         busy: '#D97706',
+
+        // Glassmorphism
+        glass: 'rgba(255, 255, 255, 0.7)',
+        glassBorder: 'rgba(255, 255, 255, 0.5)',
+        glassActive: 'rgba(255, 255, 255, 0.9)',
     },
 
     // High Contrast Theme for Accessibility
@@ -289,6 +299,11 @@ export const colors = {
         online: '#00FF00',
         offline: '#808080',
         busy: '#FFFF00',
+
+        // Glassmorphism - High visibility (less transparency)
+        glass: 'rgba(0, 0, 0, 0.95)',
+        glassBorder: '#FFFFFF',
+        glassActive: '#000000',
     },
 };
 

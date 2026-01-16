@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { GlassView } from '../components/common/GlassView';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -94,8 +94,9 @@ export default function MemoryScreen({ navigation }: { navigation: any }) {
         );
     };
 
+
     const renderItem = ({ item }: { item: Memory }) => (
-        <View style={[styles.memoryItem, { backgroundColor: colors.card }]}>
+        <GlassView style={styles.memoryItem} intensity={25}>
             <View style={styles.memoryContentContainer}>
                 <Text style={[styles.memoryText, { color: colors.text }]}>{item.text}</Text>
                 <View style={styles.memoryMeta}>
@@ -111,7 +112,7 @@ export default function MemoryScreen({ navigation }: { navigation: any }) {
             >
                 <Ionicons name="trash-outline" size={18} color="#EF4444" />
             </TouchableOpacity>
-        </View>
+        </GlassView>
     );
 
     return (
@@ -226,6 +227,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         marginBottom: 16, // More spacing
         padding: 16,
+        overflow: 'hidden',
         // Removed border, relying on background contrast or slight elevation if needed
     },
     memoryContentContainer: {

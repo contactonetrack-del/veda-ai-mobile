@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { GlassView } from '../components/common/GlassView';
 import SettingsSection from '../components/settings/SettingsSection';
 import SettingsRow from '../components/settings/SettingsRow';
 import UsageStats from '../components/settings/UsageStats';
@@ -164,7 +165,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                 <View style={styles.sectionTitleContainer}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>APPEARANCE</Text>
                 </View>
-                <View style={[styles.cardContainer, { backgroundColor: isDark ? colors.card : '#FFF', ...shadows.sm }]}>
+                <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
                         label="Dark Mode"
                         icon="moon"
@@ -190,7 +191,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         accessibilityHint="Adjust AI voice gender and speech speed"
                         isLast
                     />
-                </View>
+                </GlassView>
 
                 {/* Insights */}
                 <View style={styles.sectionTitleContainer}>
@@ -203,7 +204,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                 <View style={styles.sectionTitleContainer}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>NOTIFICATIONS</Text>
                 </View>
-                <View style={[styles.cardContainer, { backgroundColor: isDark ? colors.card : '#FFF', ...shadows.sm }]}>
+                <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
                         label="Push Notifications"
                         icon="notifications-outline"
@@ -229,13 +230,13 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                             />
                         }
                     />
-                </View>
+                </GlassView>
 
                 {/* Accessibility */}
                 <View style={styles.sectionTitleContainer}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>ACCESSIBILITY</Text>
                 </View>
-                <View style={[styles.cardContainer, { backgroundColor: isDark ? colors.card : '#FFF', ...shadows.sm }]}>
+                <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
                         label="Reduce Motion"
                         icon="move-outline"
@@ -276,14 +277,14 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                             />
                         }
                     />
-                </View>
+                </GlassView>
 
 
                 {/* General */}
                 <View style={styles.sectionTitleContainer}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>GENERAL</Text>
                 </View>
-                <View style={[styles.cardContainer, { backgroundColor: isDark ? colors.card : '#FFF', ...shadows.sm }]}>
+                <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
                         label="Language"
                         icon="language-outline"
@@ -297,13 +298,13 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         onPress={() => navigation.navigate('Memory')}
                         isLast
                     />
-                </View>
+                </GlassView>
 
                 {/* Account Actions */}
                 <View style={styles.sectionTitleContainer}>
                     <Text style={[styles.sectionTitle, { color: colors.primary }]}>ACCOUNT</Text>
                 </View>
-                <View style={[styles.cardContainer, { backgroundColor: isDark ? colors.card : '#FFF', ...shadows.sm }]}>
+                <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
                         label="Clear History"
                         icon="trash-outline"
@@ -337,7 +338,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         onPress={onLogout}
                         isLast
                     />
-                </View>
+                </GlassView>
 
                 <Text style={[styles.versionText, { color: colors.subtext }]}>
                     VEDA AI v1.2.0 • Build 2026.01.16
@@ -431,9 +432,11 @@ const styles = StyleSheet.create({
         letterSpacing: 1.2,
     },
     cardContainer: {
-        borderRadius: 16,
         marginBottom: 24,
         overflow: 'hidden',
+    },
+    glassCardOverride: {
+        // Additional styles if needed, e.g. border handled by GlassView
     },
     versionText: {
         textAlign: 'center',

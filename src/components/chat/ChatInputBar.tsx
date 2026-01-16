@@ -18,9 +18,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { shadows } from '../../config/colors';
 import { borderRadius, spacing, touchTarget } from '../../config/spacing';
 import { duration, easing } from '../../config/animations';
-import WaveformVisualizer from './WaveformVisualizer';
+import { VoiceVisualizer } from './VoiceVisualizer';
 import SuggestionsCarousel from './SuggestionsCarousel';
+
 import MarkdownToolbar from './MarkdownToolbar';
+import { GlassView } from '../common/GlassView';
 
 
 export interface Attachment {
@@ -42,6 +44,7 @@ interface ChatInputBarProps {
     onSuggestionSelect?: (text: string) => void;
     attachments?: Attachment[];
     onRemoveAttachment?: (id: string) => void;
+    audioLevel?: number;
 }
 
 export default function ChatInputBar({
@@ -56,6 +59,7 @@ export default function ChatInputBar({
     onSuggestionSelect,
     attachments = [],
     onRemoveAttachment,
+    audioLevel = 0,
 }: ChatInputBarProps) {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
@@ -251,102 +255,108 @@ export default function ChatInputBar({
                     <Ionicons name="add" size={24} color={colors.text} />
                 </TouchableOpacity>
 
-                {/* Input Capsule */}
+                {/* Input Capsule with Glass Effect */}
                 <Animated.View style={[
-                    styles.capsule,
+                    styles.capsuleContainer,
                     {
-                        backgroundColor: isDark ? colors.inputBg : '#F0F0F0',
                         borderColor: borderColor,
                         borderWidth: 1.5,
+                        borderRadius: borderRadius['2xl'],
                     },
                     shadows.sm,
                 ]}>
-                    <TextInput
-                        style={[
-                            styles.input,
-                            {
-                                color: colors.text,
-                                maxHeight: 120,
-                            }
-                        ]}
-                        placeholder={isRecording ? "Listening..." : "Message VEDA..."}
-                        placeholderTextColor={isRecording ? colors.error : colors.placeholder || colors.subtext}
-                        value={value}
-                        onChangeText={onChangeText}
-                        multiline
-                        returnKeyType="default"
-                        blurOnSubmit={false}
-                        editable={!isLoading && !isRecording}
-                        accessibilityLabel="Chat input field"
-                        accessibilityHint="Type your message here to chat with VEDA AI"
-                        ref={inputRef}
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(false)}
-                        onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-                        selection={selection}
-                    />
+                    <GlassView
+                        intensity={50}
+                        style={styles.glassCapsule}
+                        border={false}
+                    >
+                        <TextInput
+                            style={[
+                                styles.input,
+                                {
+                                    color: colors.text,
+                                    maxHeight: 120,
+                                }
+                            ]}
+                            placeholder={isRecording ? "Listening..." : "Message VEDA..."}
+                            placeholderTextColor={isRecording ? colors.error : colors.placeholder || colors.subtext}
+                            value={value}
+                            onChangeText={onChangeText}
+                            multiline
+                            returnKeyType="default"
+                            blurOnSubmit={false}
+                            editable={!isLoading && !isRecording}
+                            accessibilityLabel="Chat input field"
+                            accessibilityHint="Type your message here to chat with VEDA AI"
+                            ref={inputRef}
+                            onFocus={() => setIsFocused(true)}
+                            onBlur={() => setIsFocused(false)}
+                            onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
+                            selection={selection}
+                        />
 
 
-                    {/* Waveform Overlay during Recording */}
-                    {isRecording && (
-                        <View style={styles.waveformOverlay} importantForAccessibility="no-hide-descendants">
-                            <WaveformVisualizer isActive={isRecording} />
+                        {/* Waveform Overlay during Recording */}
+                        {isRecording && (
+                            <View style={styles.waveformOverlay} importantForAccessibility="no-hide-descendants">
+                                <VoiceVisualizer visible={isRecording} level={audioLevel} />
+                            </View>
+                        )}
+
+                        <View style={styles.rightActions}>
+                            {/* Mic Button */}
+                            <Animated.View style={{ transform: [{ scale: recordingPulse }] }}>
+                                <TouchableOpacity
+                                    onPress={handleMicPress}
+                                    style={[
+                                        styles.micButton,
+                                        isRecording && {
+                                            backgroundColor: `${colors.error}20`,
+                                        },
+                                    ]}
+                                    activeOpacity={0.7}
+                                    accessibilityLabel={isRecording ? "Stop recording" : "Voice input"}
+                                    accessibilityRole="button"
+                                    accessibilityHint={isRecording ? "Tap to finish recording your message" : "Tap to speak your message"}
+                                >
+                                    <Ionicons
+                                        name={isRecording ? "stop-circle" : "mic-outline"}
+                                        size={22}
+                                        color={isRecording ? colors.error : colors.subtext}
+                                    />
+                                </TouchableOpacity>
+                            </Animated.View>
+
+                            {/* Send Button */}
+                            <Animated.View
+                                style={{
+                                    transform: [{ scale: sendButtonScale }],
+                                    opacity: sendButtonOpacity,
+                                }}
+                            >
+                                <TouchableOpacity
+                                    onPress={handleSend}
+                                    disabled={isLoading || !hasText}
+                                    style={[
+                                        styles.sendButton,
+                                        {
+                                            backgroundColor: colors.primary,
+                                            opacity: isLoading ? 0.7 : 1,
+                                        },
+                                    ]}
+                                    activeOpacity={0.8}
+                                    accessibilityLabel="Send message"
+                                    accessibilityRole="button"
+                                >
+                                    {isLoading ? (
+                                        <ActivityIndicator size="small" color="#FFF" />
+                                    ) : (
+                                        <Ionicons name="arrow-up" size={18} color="#FFF" />
+                                    )}
+                                </TouchableOpacity>
+                            </Animated.View>
                         </View>
-                    )}
-
-                    <View style={styles.rightActions}>
-                        {/* Mic Button */}
-                        <Animated.View style={{ transform: [{ scale: recordingPulse }] }}>
-                            <TouchableOpacity
-                                onPress={handleMicPress}
-                                style={[
-                                    styles.micButton,
-                                    isRecording && {
-                                        backgroundColor: `${colors.error}20`,
-                                    },
-                                ]}
-                                activeOpacity={0.7}
-                                accessibilityLabel={isRecording ? "Stop recording" : "Voice input"}
-                                accessibilityRole="button"
-                                accessibilityHint={isRecording ? "Tap to finish recording your message" : "Tap to speak your message"}
-                            >
-                                <Ionicons
-                                    name={isRecording ? "stop-circle" : "mic-outline"}
-                                    size={22}
-                                    color={isRecording ? colors.error : colors.subtext}
-                                />
-                            </TouchableOpacity>
-                        </Animated.View>
-
-                        {/* Send Button */}
-                        <Animated.View
-                            style={{
-                                transform: [{ scale: sendButtonScale }],
-                                opacity: sendButtonOpacity,
-                            }}
-                        >
-                            <TouchableOpacity
-                                onPress={handleSend}
-                                disabled={isLoading || !hasText}
-                                style={[
-                                    styles.sendButton,
-                                    {
-                                        backgroundColor: colors.primary,
-                                        opacity: isLoading ? 0.7 : 1,
-                                    },
-                                ]}
-                                activeOpacity={0.8}
-                                accessibilityLabel="Send message"
-                                accessibilityRole="button"
-                            >
-                                {isLoading ? (
-                                    <ActivityIndicator size="small" color="#FFF" />
-                                ) : (
-                                    <Ionicons name="arrow-up" size={18} color="#FFF" />
-                                )}
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </View>
+                    </GlassView>
                 </Animated.View>
             </View>
         </View>
@@ -401,15 +411,20 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         marginBottom: 2,
     },
-    capsule: {
+    capsuleContainer: {
+        flex: 1,
+        borderRadius: borderRadius['2xl'],
+        overflow: 'hidden', // Ensure glass doesn't bleed
+        minHeight: 52,
+    },
+    glassCapsule: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        borderRadius: borderRadius['2xl'],
         paddingVertical: spacing[2],
         paddingLeft: spacing[4],
         paddingRight: spacing[2],
-        minHeight: 52,
+        width: '100%',
     },
     waveformOverlay: {
         position: 'absolute',

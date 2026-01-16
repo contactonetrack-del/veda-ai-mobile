@@ -20,15 +20,22 @@ import * as Haptics from 'expo-haptics';
 interface KnowledgeBaseModalProps {
     visible: boolean;
     onClose: () => void;
+    onSelectDocument?: (document: any) => void;
 }
 
-export default function KnowledgeBaseModal({ visible, onClose }: KnowledgeBaseModalProps) {
+export default function KnowledgeBaseModal({ visible, onClose, onSelectDocument }: KnowledgeBaseModalProps) {
     const { colors, isDark } = useTheme();
     const [status, setStatus] = useState<'loading' | 'connected' | 'error'>('loading');
     const [stats, setStats] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
+
+    const handleSelect = (item: any) => {
+        Haptics.selectionAsync();
+        onSelectDocument?.(item);
+        onClose();
+    };
 
     useEffect(() => {
         if (visible) {
@@ -157,7 +164,11 @@ export default function KnowledgeBaseModal({ visible, onClose }: KnowledgeBaseMo
                             {/* Results List */}
                             <ScrollView style={styles.resultsList} contentContainerStyle={{ paddingBottom: 20 }}>
                                 {searchResults.map((item, index) => (
-                                    <View key={index} style={[styles.resultItem, { backgroundColor: colors.background, borderColor: colors.cardBorder }]}>
+                                    <TouchableOpacity
+                                        key={index}
+                                        style={[styles.resultItem, { backgroundColor: colors.background, borderColor: colors.cardBorder }]}
+                                        onPress={() => handleSelect(item)}
+                                    >
                                         <Text style={[styles.resultContent, { color: colors.text }]} numberOfLines={3}>
                                             {item.content || "No content preview"}
                                         </Text>
@@ -170,7 +181,7 @@ export default function KnowledgeBaseModal({ visible, onClose }: KnowledgeBaseMo
                                                 {(item.score * 100).toFixed(0)}% match
                                             </Text>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 ))}
                                 {!isSearching && searchResults.length === 0 && searchQuery.length > 0 && (
                                     <Text style={[styles.emptyText, { color: colors.subtext }]}>No relevant knowledge found.</Text>

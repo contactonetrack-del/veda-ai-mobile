@@ -6,6 +6,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking, StyleSheet, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as WebBrowser from 'expo-web-browser';
 import { useTheme } from '../context/ThemeContext';
 
 interface Source {
@@ -43,12 +44,15 @@ export function SourcesCitation({
 
     const handleOpenLink = async (url: string) => {
         try {
-            const supported = await Linking.canOpenURL(url);
-            if (supported) {
-                await Linking.openURL(url);
-            }
+            await WebBrowser.openBrowserAsync(url, {
+                presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+                toolbarColor: isDark ? '#121212' : '#ffffff',
+                controlsColor: colors.primary,
+            });
         } catch (error) {
             console.error('Error opening URL:', error);
+            // Fallback
+            Linking.openURL(url).catch(err => console.error('Linking error:', err));
         }
     };
 
