@@ -601,7 +601,9 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     </View>
                 )}
 
-                {/* Phase 5: Mode Selection Dropdown Trigger */}
+                {/* Mode Selection Dropdown - HIDDEN for ChatGPT-style minimal UI */}
+                {/* Mode is kept at 'auto' - AI auto-detects intent */}
+                {/* Uncomment below to restore mode selector if needed
                 <TouchableOpacity
                     style={[styles.modeDropdownTrigger, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
                     onPress={() => { Haptics.selectionAsync(); setShowModeModal(true); }}
@@ -636,6 +638,8 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                     </Text>
                     <Ionicons name="chevron-down" size={14} color={colors.subtext} />
                 </TouchableOpacity>
+                */}
+
 
                 {/* Input */}
                 <View style={[styles.inputContainer, { backgroundColor: colors.card, borderTopColor: colors.cardBorder }]}>
