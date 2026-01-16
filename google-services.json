@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "247809272190",
+    "project_id": "veda-ai-b412f",
+    "storage_bucket": "veda-ai-b412f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:247809272190:android:7fee86deea825b4cfeab2f",
+        "android_client_info": {
+          "package_name": "com.vedaai.mobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "247809272190-g7nb702c4p2e7clpp5m7nn1ijq7r8ff9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.vedaai.mobile",
+            "certificate_hash": "68b6f0686eb5a9c8ee64635b39cb61dab81dfcdb"
+          }
+        },
+        {
+          "client_id": "247809272190-h2hkif95rb4ub2qsbes3nk8j8ogdtj32.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB-ycZTmJgyJqSBaGcTxbraKzoPmsxqI3c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "247809272190-h2hkif95rb4ub2qsbes3nk8j8ogdtj32.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

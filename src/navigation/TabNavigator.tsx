@@ -1,5 +1,6 @@
 /**
- * Tab Navigator - Premium Bottom Tab Navigation
+ * Tab Navigator - Premium Bottom Tab Navigation (ChatGPT-style)
+ * Simplified: Chat + Profile only
  */
 
 import React from 'react';
@@ -10,7 +11,6 @@ import * as Haptics from 'expo-haptics';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ChatScreen from '../screens/ChatScreen';
-import ToolsStackNavigator from './ToolsStackNavigator';
 import ProfileStackNavigator from './ProfileStackNavigator';
 import { useTheme } from '../context/ThemeContext';
 
@@ -72,23 +72,6 @@ export default function TabNavigator({ onLogout }: TabNavigatorProps) {
             </Tab.Screen>
 
             <Tab.Screen
-                name="Tools"
-                component={ToolsStackNavigator}
-                options={{
-                    tabBarLabel: 'Tools',
-                    tabBarIcon: ({ color, focused }) => (
-                        <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
-                            <Ionicons
-                                name="calculator"
-                                size={20}
-                                color={color}
-                            />
-                        </View>
-                    ),
-                }}
-            />
-
-            <Tab.Screen
                 name="Profile"
                 options={{
                     tabBarLabel: 'Profile',
@@ -121,4 +104,5 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(16, 185, 129, 0.2)',
     },
 });
+
 

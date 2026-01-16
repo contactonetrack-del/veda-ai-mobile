@@ -29,7 +29,7 @@ yarn-error.*
 # Secrets & API Keys
 .env
 .env.*
-google-services.json
+# Note: google-services.json is tracked for EAS builds (API key is restricted)
 GoogleService-Info.plist
 *.keystore
 *.jks
