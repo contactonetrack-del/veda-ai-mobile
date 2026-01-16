@@ -48,7 +48,7 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
         Animated.loop(
             Animated.timing(rotateAnim, {
                 toValue: 1,
-                duration: 60000,
+                duration: 42000,
                 easing: Easing.linear,
                 useNativeDriver: true,
             })
