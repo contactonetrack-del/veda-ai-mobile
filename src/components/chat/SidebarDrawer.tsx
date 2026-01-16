@@ -22,12 +22,13 @@ interface SidebarDrawerProps {
     isOpen: boolean;
     onClose: () => void;
     onNewChat: () => void;
+    onSelectChat: (chatId: string) => void;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.85; // 85% width like ChatGPT
 
-export default function SidebarDrawer({ isOpen, onClose, onNewChat }: SidebarDrawerProps) {
+export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat }: SidebarDrawerProps) {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const { user, logout } = useAuth();
@@ -163,7 +164,7 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat }: SidebarDra
                                     <TouchableOpacity
                                         key={item.id}
                                         style={styles.historyItem}
-                                        onPress={() => Alert.alert('History', 'Chat history loading coming soon')}
+                                        onPress={() => onSelectChat(item.id)}
                                     >
                                         <Text
                                             style={[styles.historyItemText, { color: colors.text }]}

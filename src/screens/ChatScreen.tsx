@@ -206,6 +206,26 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
         setMessages([]); // Clear messages to show Empty State
     };
 
+    const handleLoadChat = async (chatId: string) => {
+        try {
+            setLoading(true);
+            setIsSidebarOpen(false);
+            const messages = await api.getChatMessages(chatId);
+            setMessages(messages.map((m: any) => ({
+                id: m.id || Date.now().toString(),
+                role: m.role,
+                content: m.content,
+                timestamp: new Date(m.created_at || Date.now()),
+                sources: m.sources,
+                agentUsed: m.agent_used
+            })));
+        } catch (error) {
+            Alert.alert("Error", "Failed to load chat history");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
@@ -220,6 +240,7 @@ export default function ChatScreen({ onLogout }: { onLogout: () => void }) {
                 isOpen={isSidebarOpen}
                 onClose={() => setIsSidebarOpen(false)}
                 onNewChat={handleNewChat}
+                onSelectChat={handleLoadChat}
             />
 
             {messages.length === 0 ? (
