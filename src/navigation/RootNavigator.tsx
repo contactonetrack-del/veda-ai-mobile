@@ -1,15 +1,27 @@
 /**
  * Root Navigator
- * Handles top-level navigation (Tabs + Modals/Full-screen specific flows)
+ * Handles top-level navigation (Replacing Tabs with direct Stack)
  */
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import TabNavigator from './TabNavigator';
+
+// Screens
+import ChatScreen from '../screens/ChatScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import AboutScreen from '../screens/AboutScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import TermsScreen from '../screens/TermsScreen';
 import MemoryScreen from '../screens/MemoryScreen';
 
 export type RootStackParamList = {
-    Main: undefined;
+    Chat: undefined;
+    Settings: undefined;
+    EditProfile: undefined;
+    About: undefined;
+    PrivacyPolicy: undefined;
+    TermsOfService: undefined;
     Memory: undefined;
 };
 
@@ -26,10 +38,21 @@ export default function RootNavigator({ onLogout }: RootNavigatorProps) {
                 headerShown: false,
                 animation: 'slide_from_right',
             }}
+            initialRouteName="Chat"
         >
-            <Stack.Screen name="Main">
-                {(props) => <TabNavigator {...props} onLogout={onLogout} />}
+            <Stack.Screen name="Chat">
+                {(props) => <ChatScreen {...props} onLogout={onLogout} />}
             </Stack.Screen>
+
+            <Stack.Screen name="Settings">
+                {(props) => <SettingsScreen {...props} onLogout={onLogout} />}
+            </Stack.Screen>
+
+            <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+            <Stack.Screen name="About" component={AboutScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="TermsOfService" component={TermsScreen} />
+
             <Stack.Screen
                 name="Memory"
                 component={MemoryScreen}

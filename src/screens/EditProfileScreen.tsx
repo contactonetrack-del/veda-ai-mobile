@@ -128,15 +128,15 @@ export default function EditProfileScreen() {
                         {avatar ? (
                             <Image source={{ uri: avatar }} style={styles.avatarImage} />
                         ) : (
-                            <LinearGradient colors={['#10B981', '#059669']} style={styles.avatarPlaceholder}>
+                            <LinearGradient colors={[colors.primary, '#059669']} style={styles.avatarPlaceholder}>
                                 <Ionicons name="person" size={40} color="#FFF" />
                             </LinearGradient>
                         )}
-                        <View style={[styles.cameraIconBadge, { borderColor: colors.background }]}>
+                        <View style={[styles.cameraIconBadge, { borderColor: colors.background, backgroundColor: colors.accent }]}>
                             <Ionicons name="camera" size={16} color="#FFF" />
                         </View>
                     </TouchableOpacity>
-                    <Text style={[styles.changePhotoText, { color: colors.secondary }]}>{t('change_photo')}</Text>
+                    <Text style={[styles.changePhotoText, { color: colors.primary }]}>{t('change_photo')}</Text>
                 </View>
 
                 {/* Form Fields */}
@@ -184,7 +184,6 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#020617',
     },
     header: {
         flexDirection: 'row',
@@ -193,7 +192,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#1E293B',
     },
     backButton: {
         padding: 8,
@@ -201,12 +199,10 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#F8FAFC',
     },
     saveText: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#10B981',
         padding: 8,
     },
     content: {
@@ -236,18 +232,15 @@ const styles = StyleSheet.create({
         position: 'absolute',
         bottom: 0,
         right: 0,
-        backgroundColor: '#3B82F6',
         width: 32,
         height: 32,
         borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
-        borderColor: '#020617',
     },
     changePhotoText: {
         marginTop: 12,
-        color: '#3B82F6',
         fontSize: 14,
         fontWeight: '500',
     },
@@ -258,26 +251,20 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     label: {
-        color: '#94A3B8',
         fontSize: 14,
         fontWeight: '500',
     },
     input: {
-        backgroundColor: '#0F172A',
         borderWidth: 1,
-        borderColor: '#1E293B',
         borderRadius: 12,
         paddingHorizontal: 16,
         paddingVertical: 12,
-        color: '#F8FAFC',
         fontSize: 16,
     },
     disabledInput: {
         opacity: 0.5,
-        backgroundColor: '#1E293B',
     },
     helperText: {
-        color: '#64748B',
         fontSize: 12,
         marginTop: 4,
     },

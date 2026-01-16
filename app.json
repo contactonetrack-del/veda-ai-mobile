@@ -4,14 +4,14 @@
     "slug": "veda-ai-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/veda-avatar.png",
     "scheme": "veda-ai",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/veda-avatar.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#212121"
     },
     "ios": {
       "supportsTablet": true,
@@ -21,8 +21,8 @@
       "package": "com.vedaai.mobile",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/veda-avatar.png",
+        "backgroundColor": "#212121"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false

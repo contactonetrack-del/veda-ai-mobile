@@ -18,6 +18,7 @@ interface ThemeContextType {
     colors: ThemeColors;
     toggleTheme: () => void;
     setThemePreference: (preference: ThemePreference) => void;
+    setTheme: (theme: ThemeType) => void; // Support manual override if needed
     isDark: boolean;
 }
 
@@ -83,6 +84,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             colors: themeColors,
             toggleTheme,
             setThemePreference,
+            setTheme,
             isDark: theme === 'dark'
         }}>
             {children}

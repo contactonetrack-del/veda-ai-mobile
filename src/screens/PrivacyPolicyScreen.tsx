@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -14,9 +14,10 @@ export default function PrivacyPolicyScreen() {
     const { colors } = useTheme();
     const { t } = useLanguage();
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
             <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
@@ -24,7 +25,11 @@ export default function PrivacyPolicyScreen() {
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('privacy_policy')}</Text>
             </View>
 
-            <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <ScrollView
+                style={styles.content}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+                showsVerticalScrollIndicator={false}
+            >
                 <Text style={[styles.lastUpdated, { color: colors.subtext }]}>Last Updated: Jan 10, 2026</Text>
 
                 <Text style={[styles.paragraph, { color: colors.text }]}>
@@ -48,7 +53,7 @@ export default function PrivacyPolicyScreen() {
 
                 <View style={{ height: 40 }} />
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 

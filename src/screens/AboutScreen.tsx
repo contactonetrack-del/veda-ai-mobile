@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Animated } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../context/ThemeContext';
@@ -17,6 +17,7 @@ export default function AboutScreen() {
     const { colors, isDark } = useTheme();
     const { t } = useLanguage();
     const navigation = useNavigation();
+    const insets = useSafeAreaInsets();
 
     const features = [
         { icon: 'language-outline', title: '25 Languages', desc: '100% India Coverage', color: '#3B82F6' },
@@ -26,34 +27,25 @@ export default function AboutScreen() {
     ];
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             {/* Premium Header */}
-            <LinearGradient
-                colors={isDark ? ['#0F172A', '#1E293B'] : ['#F8FAFC', '#E2E8F0']}
-                style={[styles.header, { borderBottomColor: colors.cardBorder }]}
-            >
+            <View style={[styles.header, { borderBottomColor: colors.cardBorder, backgroundColor: colors.background }]}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backButton, { backgroundColor: colors.inputBg }]}>
                     <Ionicons name="arrow-back" size={20} color={colors.text} />
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('about_veda')}</Text>
                 <View style={{ width: 40 }} />
-            </LinearGradient>
+            </View>
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 {/* Premium Logo Card */}
-                <LinearGradient
-                    colors={['rgba(16, 185, 129, 0.15)', 'rgba(59, 130, 246, 0.1)']}
-                    style={[styles.logoCard, { borderColor: colors.cardBorder }]}
-                >
-                    <LinearGradient
-                        colors={['#10B981', '#059669', '#047857']}
-                        style={styles.logoBackground}
-                    >
+                <View style={[styles.logoCard, { borderColor: colors.cardBorder, backgroundColor: colors.card }]}>
+                    <View style={[styles.logoBackground, { backgroundColor: colors.primary }]}>
                         <MaterialCommunityIcons name="meditation" size={48} color="#fff" />
-                    </LinearGradient>
+                    </View>
                     <Text style={[styles.appName, { color: colors.text }]}>VEDA AI</Text>
                     <View style={styles.versionBadge}>
-                        <Text style={styles.versionText}>v1.0.0</Text>
+                        <Text style={[styles.versionText, { color: colors.subtext }]}>v1.0.0</Text>
                         <View style={styles.betaBadge}>
                             <Text style={styles.betaText}>BETA</Text>
                         </View>
@@ -61,7 +53,7 @@ export default function AboutScreen() {
                     <Text style={[styles.tagline, { color: colors.subtext }]}>
                         Ancient Wisdom • Modern Intelligence
                     </Text>
-                </LinearGradient>
+                </View>
 
                 {/* Features Grid */}
                 <Text style={[styles.sectionTitle, { color: colors.subtext }]}>KEY FEATURES</Text>
@@ -112,7 +104,7 @@ export default function AboutScreen() {
                 {/* Footer */}
                 <Text style={[styles.footer, { color: colors.subtext }]}>© 2026 VEDA AI. All rights reserved.</Text>
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -160,7 +152,7 @@ const styles = StyleSheet.create({
     },
     appName: { fontSize: 28, fontWeight: '800', letterSpacing: 1 },
     versionBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 8 },
-    versionText: { fontSize: 14, color: '#64748B' },
+    versionText: { fontSize: 14 },
     betaBadge: { backgroundColor: '#3B82F6', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 },
     betaText: { fontSize: 10, fontWeight: '700', color: '#fff' },
     tagline: { fontSize: 14, marginTop: 12, fontStyle: 'italic' },

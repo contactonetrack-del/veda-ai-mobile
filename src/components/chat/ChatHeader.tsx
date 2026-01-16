@@ -1,154 +1,108 @@
-/**
- * Chat Header Component
- * Extracted from ChatScreen for maintainability
- */
-
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
+import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../context/ThemeContext';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../../context/AuthContext';
 
 interface ChatHeaderProps {
-    isGuest: boolean;
-    guestRemaining: number;
-    selectedLanguage: string;
-    languageDisplayName: string;
-    voiceGender: 'male' | 'female';
-    onVoiceGenderToggle: () => void;
-    onLanguagePress: () => void;
-    onLogout: () => void;
-    colors: any;
-    isDark: boolean;
+    onOpenSidebar: () => void;
+    onNewChat: () => void;
+    currentModel?: string;
 }
 
-export default function ChatHeader({
-    isGuest,
-    guestRemaining,
-    languageDisplayName,
-    voiceGender,
-    onVoiceGenderToggle,
-    onLanguagePress,
-    onLogout,
-    colors,
-}: ChatHeaderProps) {
+export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'VEDA AI' }: ChatHeaderProps) {
+    const { colors, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
+    const navigation = useNavigation<any>();
+    const { user } = useAuth();
+
     return (
-        <LinearGradient colors={[colors.card, colors.background]} style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-            <View style={styles.headerLeft}>
-                <View style={styles.headerLogoWrapper}>
-                    <LinearGradient colors={['#10B981', '#059669']} style={styles.headerLogo}>
-                        <MaterialCommunityIcons name="meditation" size={22} color="#fff" />
-                    </LinearGradient>
-                </View>
-                <View>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>VEDA AI</Text>
-                    <Text style={[styles.headerSubtitle, { color: colors.subtext }]}>
-                        {isGuest ? `Guest • ${guestRemaining} left` : 'Premium Member'}
-                    </Text>
+        <View style={[
+            styles.container,
+            {
+                backgroundColor: colors.background,
+                paddingTop: insets.top,
+                borderBottomColor: isDark ? '#2F2F2F' : '#E5E5E5',
+            }
+        ]}>
+            <View style={styles.content}>
+                {/* Left: Hamburger (Circular) */}
+                <TouchableOpacity onPress={onOpenSidebar} style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8' }]}>
+                    <Ionicons name="menu" size={24} color={colors.text} />
+                </TouchableOpacity>
+
+                {/* Center: Title (No Pill) */}
+                <TouchableOpacity style={styles.titleContainer}>
+                    <Text style={[styles.titleText, { color: colors.text }]}>Veda AI</Text>
+                    <Text style={{ fontSize: 12, color: colors.subtext, marginLeft: 4 }}>v1.0</Text>
+                </TouchableOpacity>
+
+                {/* Right: Profile */}
+                <View style={styles.rightRow}>
+                    <TouchableOpacity
+                        onPress={() => navigation.navigate('Settings')}
+                        style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8', marginLeft: 8 }]}
+                    >
+                        {user?.photoURL ? (
+                            <Image
+                                source={{ uri: user.photoURL }}
+                                style={{ width: 32, height: 32, borderRadius: 16 }}
+                            />
+                        ) : (
+                            <Ionicons name="person" size={20} color={colors.text} />
+                        )}
+                    </TouchableOpacity>
                 </View>
             </View>
-
-            <View style={styles.headerRight}>
-                {/* Voice Gender Toggle */}
-                <TouchableOpacity
-                    onPress={() => {
-                        Haptics.selectionAsync();
-                        onVoiceGenderToggle();
-                    }}
-                    style={[styles.genderButton, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
-                >
-                    <Ionicons
-                        name={voiceGender === 'female' ? "woman" : "man"}
-                        size={16}
-                        color={voiceGender === 'female' ? "#EC4899" : "#3B82F6"}
-                    />
-                </TouchableOpacity>
-
-                {/* Language Selector */}
-                <TouchableOpacity
-                    onPress={() => {
-                        Haptics.selectionAsync();
-                        onLanguagePress();
-                    }}
-                    style={[styles.languageButton, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}
-                >
-                    <Text style={[styles.languageButtonText, { color: colors.text }]}>
-                        {languageDisplayName.slice(0, 3)}
-                    </Text>
-                    <Ionicons name="language" size={16} color={colors.subtext} />
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={onLogout} style={[styles.logoutButton, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
-                    <Ionicons name="power-outline" size={18} color="#EF4444" />
-                </TouchableOpacity>
-            </View>
-        </LinearGradient>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    header: {
+    container: {
+        width: '100%',
+        // Removed borderBottomWidth for cleaner look
+    },
+    content: {
         flexDirection: 'row',
+        alignItems: 'center',
         justifyContent: 'space-between',
-        alignItems: 'center',
+        height: 60,
         paddingHorizontal: 16,
-        paddingVertical: 14,
-        paddingTop: 48,
-        borderBottomWidth: 1,
-        borderBottomColor: '#1E293B',
-        backgroundColor: '#0F172A',
-        zIndex: 10,
     },
-    headerLeft: { flexDirection: 'row', alignItems: 'center' },
-    headerLogoWrapper: {
-        marginRight: 12,
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    headerLogo: {
-        width: 38,
-        height: 38,
-        borderRadius: 11,
-        justifyContent: 'center',
+    circleButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         alignItems: 'center',
-    },
-    headerTitle: { fontSize: 17, fontWeight: '700', color: '#F8FAFC' },
-    headerSubtitle: { fontSize: 11, color: '#94A3B8', marginTop: 1 },
-    headerRight: { flexDirection: 'row', alignItems: 'center' },
-    genderButton: {
-        width: 34,
-        height: 34,
-        borderRadius: 10,
-        backgroundColor: '#1E293B',
         justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
-        borderWidth: 1,
-        borderColor: '#334155',
     },
-    languageButton: {
+    button: { // Cleanup old
+        padding: 8,
+    },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    titleText: {
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
+    rightRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#1E293B',
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 8,
-        marginRight: 10,
-        borderWidth: 1,
-        borderColor: '#334155',
     },
-    languageButtonText: { color: '#E2E8F0', fontSize: 12, fontWeight: '600', marginRight: 4 },
-    logoutButton: {
-        width: 34,
-        height: 34,
-        borderRadius: 10,
-        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-        borderWidth: 1,
-        borderColor: 'rgba(239, 68, 68, 0.2)',
-        justifyContent: 'center',
+    iconButton: {
+        padding: 8,
+    },
+    modelSelector: { // Cleanup old
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 4,
     },
+    modelText: { // Cleanup old
+        fontSize: 16,
+    }
 });

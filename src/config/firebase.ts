@@ -19,7 +19,7 @@ const firebaseConfig = {
 };
 
 // Defensive Initialization
-let app, auth, db;
+let app: any, auth: any, db: any;
 try {
     if (!firebaseConfig.apiKey) {
         console.error("❌ Firebase API Key is missing! Check your environment variables.");

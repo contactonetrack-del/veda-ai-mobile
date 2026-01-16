@@ -21,6 +21,7 @@ interface SourcesCitationProps {
     fallbackReason?: string;
     verified?: boolean;
     confidence?: number;
+    compact?: boolean;
 }
 
 export function SourcesCitation({
@@ -28,7 +29,8 @@ export function SourcesCitation({
     isFallback = false,
     fallbackReason = '',
     verified = false,
-    confidence = 0.0
+    confidence = 0.0,
+    compact = false
 }: SourcesCitationProps) {
     const { colors, isDark } = useTheme();
 

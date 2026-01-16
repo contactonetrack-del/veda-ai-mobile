@@ -10,7 +10,7 @@ import {
     StatusBar,
     Platform
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -31,6 +31,7 @@ interface Memory {
 export default function MemoryScreen({ navigation }: { navigation: any }) {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
     const [memories, setMemories] = useState<Memory[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
@@ -94,10 +95,10 @@ export default function MemoryScreen({ navigation }: { navigation: any }) {
     };
 
     const renderItem = ({ item }: { item: Memory }) => (
-        <View style={[styles.memoryItem, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.memoryItem, { backgroundColor: colors.card }]}>
             <View style={styles.memoryContentContainer}>
                 <Text style={[styles.memoryText, { color: colors.text }]}>{item.text}</Text>
-                <View style={[styles.memoryMeta, { borderTopColor: colors.cardBorder }]}>
+                <View style={styles.memoryMeta}>
                     <Text style={[styles.memoryRole, { color: colors.primary }]}>{item.metadata?.role || 'assistant'}</Text>
                     <Text style={[styles.memoryDate, { color: colors.subtext }]}>
                         {new Date(item.created_at).toLocaleDateString()}
@@ -114,11 +115,11 @@ export default function MemoryScreen({ navigation }: { navigation: any }) {
     );
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}>
             <StatusBar barStyle={isDark ? "light-content" : "dark-content"} backgroundColor={colors.background} />
 
             {/* Header */}
-            <View style={[styles.header, { borderBottomColor: colors.cardBorder, backgroundColor: colors.card }]}>
+            <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.text} />
                 </TouchableOpacity>
@@ -171,9 +172,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'ios' ? 50 : 40,
         paddingBottom: 16,
-        borderBottomWidth: 1,
+        backgroundColor: 'transparent',
     },
     headerTitleContainer: {
         flexDirection: 'row',
@@ -181,22 +181,27 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     headerTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
+        fontSize: 20,
+        fontWeight: 'bold', // Bolder title
     },
     backButton: {
-        padding: 4,
+        padding: 8,
+        borderRadius: 20,
     },
     wipeButton: {
-        padding: 4,
+        padding: 8,
+        borderRadius: 20,
     },
     statsContainer: {
         padding: 12,
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
+        marginBottom: 8,
     },
     statsText: {
-        fontSize: 12,
-        fontWeight: '600',
+        fontSize: 13,
+        fontWeight: '500',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     listContainer: {
         padding: 16,
@@ -218,36 +223,37 @@ const styles = StyleSheet.create({
     memoryItem: {
         flexDirection: 'row',
         alignItems: 'flex-start',
-        borderWidth: 1,
         borderRadius: 12,
-        marginBottom: 12,
-        padding: 12,
+        marginBottom: 16, // More spacing
+        padding: 16,
+        // Removed border, relying on background contrast or slight elevation if needed
     },
     memoryContentContainer: {
         flex: 1,
         marginRight: 12,
     },
     memoryText: {
-        fontSize: 14,
-        lineHeight: 20,
-        marginBottom: 8,
+        fontSize: 15, // Slightly larger
+        lineHeight: 22,
+        marginBottom: 10,
     },
     memoryMeta: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start',
         alignItems: 'center',
-        borderTopWidth: 1,
-        paddingTop: 8,
+        gap: 12,
     },
     memoryRole: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
         textTransform: 'uppercase',
+        opacity: 0.8,
     },
     memoryDate: {
-        fontSize: 12,
+        fontSize: 11,
+        opacity: 0.6,
     },
     deleteBtn: {
-        padding: 4,
+        padding: 8,
     }
 });

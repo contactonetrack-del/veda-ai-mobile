@@ -1,190 +1,142 @@
-/**
- * Message Bubble Component
- * Extracted from ChatScreen for maintainability
- */
-
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import Markdown from 'react-native-markdown-display';
-import * as Haptics from 'expo-haptics';
-import { SourcesCitation, AgentBadge } from '../SourcesCitation';
-
-interface Message {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: Date;
-    sources?: any[];
-    agentUsed?: string;
-    intent?: string;
-    verified?: boolean;
-    confidence?: number;
-}
+import { View, Text, StyleSheet, Image, Platform } from 'react-native';
+import Markdown, { MarkdownIt } from 'react-native-markdown-display';
+import { useTheme } from '../../context/ThemeContext';
+import { SourcesCitation } from '../SourcesCitation';
 
 interface MessageBubbleProps {
-    message: Message;
-    isSpeaking: boolean;
-    onSpeakPress: () => void;
-    colors: any;
-    isDark: boolean;
-    markdownStyles: any;
+    role: 'user' | 'assistant';
+    content: string;
+    sources?: any[];
+    agentUsed?: string;
 }
 
-export default function MessageBubble({
-    message,
-    isSpeaking,
-    onSpeakPress,
-    colors,
-    isDark,
-    markdownStyles,
-}: MessageBubbleProps) {
-    const isUser = message.role === 'user';
+export default function MessageBubble({ role, content, sources, agentUsed }: MessageBubbleProps) {
+    const { colors, theme } = useTheme();
+    const isUser = role === 'user';
+    const isAi = role === 'assistant';
 
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Markdown styles
+    const markdownStyles = {
+        body: {
+            color: colors.text,
+            fontSize: 16,
+            lineHeight: 24,
+            fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+        },
+        paragraph: {
+            marginTop: 0,
+            marginBottom: 8
+        },
+        code_inline: {
+            backgroundColor: isUser ? 'rgba(255,255,255,0.1)' : colors.inputBg,
+            borderRadius: 4,
+            paddingHorizontal: 4,
+            fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
+        },
+        fence: {
+            backgroundColor: colors.inputBg,
+            color: colors.text,
+            borderRadius: 8,
+            padding: 8,
+            marginVertical: 4,
+        }
     };
 
     if (isUser) {
         return (
-            <View style={styles.userMessageContainer}>
-                <View style={styles.userCard}>
-                    <LinearGradient
-                        colors={['#1D4ED8', '#1E40AF']}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={styles.userHeader}
-                    >
-                        <Text style={styles.userTimestamp}>{formatTime(message.timestamp)}</Text>
-                        <Text style={styles.userName}>You</Text>
-                        <View style={styles.userIconContainer}>
-                            <Ionicons name="person" size={12} color="#fff" />
-                        </View>
-                    </LinearGradient>
-                    <View style={styles.userContent}>
-                        <Text style={styles.userMessageText}>{message.content}</Text>
-                    </View>
+            <View style={styles.userRow}>
+                <View style={[styles.userBubble, { backgroundColor: colors.chatUserBubble }]}>
+                    <Markdown style={{
+                        ...markdownStyles,
+                        body: { ...markdownStyles.body, color: theme === 'light' ? '#1A1A1A' : '#ECECEC' }
+                    }}>
+                        {content}
+                    </Markdown>
                 </View>
             </View>
         );
     }
 
     return (
-        <View style={styles.aiMessageContainer}>
-            <View style={[styles.aiCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <View style={[styles.aiHeader, { backgroundColor: colors.inputBg, borderBottomColor: colors.cardBorder }]}>
-                    <View style={[styles.aiIconContainer, { backgroundColor: isDark ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.2)' }]}>
-                        <MaterialCommunityIcons name="meditation" size={14} color={colors.primary} />
+        <View style={styles.aiRow}>
+            {/* AI Avatar */}
+            <View style={[styles.avatarContainer, { backgroundColor: 'transparent' }]}>
+                <Image
+                    source={require('../../../assets/veda-avatar.png')}
+                    style={styles.avatar}
+                    resizeMode="cover"
+                />
+            </View>
+
+            <View style={styles.aiContent}>
+                {/* Agent Name (Optional, subtle) */}
+                {agentUsed && (
+                    <Text style={[styles.agentName, { color: colors.primary }]}>
+                        VEDA AI
+                    </Text>
+                )}
+
+                {/* Message Content */}
+                <Markdown style={markdownStyles}>
+                    {content}
+                </Markdown>
+
+                {/* Sources / Citations */}
+                {sources && sources.length > 0 && (
+                    <View style={styles.sourcesContainer}>
+                        <SourcesCitation sources={sources} compact={true} />
                     </View>
-                    <Text style={[styles.aiName, { color: colors.text }]}>VEDA AI</Text>
-                    {message.agentUsed && (
-                        <AgentBadge agent={message.agentUsed} intent={message.intent} />
-                    )}
-                    <View style={{ flex: 1 }} />
-                    <Text style={[styles.aiTimestamp, { color: colors.subtext }]}>{formatTime(message.timestamp)}</Text>
-                </View>
-                <View style={[styles.aiContent, { backgroundColor: colors.card }]}>
-                    <Markdown style={markdownStyles}>
-                        {message.content}
-                    </Markdown>
-                    {message.sources && message.sources.length > 0 && (
-                        <SourcesCitation
-                            sources={message.sources}
-                            verified={message.verified}
-                            confidence={message.confidence}
-                        />
-                    )}
-                    <TouchableOpacity
-                        style={styles.voiceButton}
-                        onPress={() => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            onSpeakPress();
-                        }}
-                    >
-                        <Ionicons
-                            name={isSpeaking ? "stop-circle" : "volume-high-outline"}
-                            size={18}
-                            color={isSpeaking ? "#10B981" : "#94A3B8"}
-                        />
-                        {isSpeaking && (
-                            <Text style={styles.speakingText}>Speaking...</Text>
-                        )}
-                    </TouchableOpacity>
-                </View>
+                )}
             </View>
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    userMessageContainer: { alignItems: 'flex-end', marginBottom: 16, paddingLeft: 40 },
-    userCard: {
-        backgroundColor: '#1E3A8A',
-        borderRadius: 14,
-        overflow: 'hidden',
-        shadowColor: '#3B82F6',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-        elevation: 3,
-    },
-    userHeader: {
+    userRow: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'flex-end',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.1)',
+        marginBottom: 24,
+        paddingHorizontal: 16,
     },
-    userTimestamp: { fontSize: 10, color: 'rgba(255,255,255,0.6)', flex: 1 },
-    userName: { fontSize: 13, fontWeight: '600', color: '#fff', marginRight: 8 },
-    userIconContainer: {
-        width: 22,
-        height: 22,
-        borderRadius: 6,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center',
+    userBubble: {
+        maxWidth: '80%',
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomRightRadius: 4, // Subtle "tail" effect
+    },
+    aiRow: {
+        flexDirection: 'row',
+        marginBottom: 24,
+        paddingHorizontal: 16,
+    },
+    avatarContainer: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        marginRight: 12,
+        marginTop: 2, // Align with text top
         alignItems: 'center',
-    },
-    userContent: { paddingHorizontal: 14, paddingVertical: 12 },
-    userMessageText: { color: '#FFFFFF', fontSize: 15, lineHeight: 22 },
-    aiMessageContainer: { marginBottom: 16, paddingRight: 40 },
-    aiCard: {
-        borderRadius: 14,
+        justifyContent: 'center',
         overflow: 'hidden',
-        borderWidth: 1,
     },
-    aiHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderBottomWidth: 1,
+    avatar: {
+        width: '100%',
+        height: '100%',
     },
-    aiIconContainer: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 8,
+    aiContent: {
+        flex: 1,
     },
-    aiName: { fontSize: 13, fontWeight: '600' },
-    aiTimestamp: { fontSize: 10 },
-    aiContent: { paddingHorizontal: 14, paddingVertical: 12 },
-    voiceButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    agentName: {
+        fontSize: 12,
+        fontWeight: '700',
+        marginBottom: 4,
+        textTransform: 'uppercase',
+        opacity: 0.8,
+    },
+    sourcesContainer: {
         marginTop: 8,
-        paddingTop: 8,
-        borderTopWidth: 1,
-        borderTopColor: 'rgba(148, 163, 184, 0.2)',
-    },
-    speakingText: {
-        fontSize: 11,
-        color: '#10B981',
-        marginLeft: 6,
-    },
+    }
 });

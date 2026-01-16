@@ -74,11 +74,11 @@ export default function TabNavigator({ onLogout }: TabNavigatorProps) {
             <Tab.Screen
                 name="Profile"
                 options={{
-                    tabBarLabel: 'Profile',
+                    tabBarLabel: 'Settings',
                     tabBarIcon: ({ color, focused }) => (
                         <View style={[styles.iconWrapper, focused && styles.activeIconWrapper]}>
                             <Ionicons
-                                name="person"
+                                name="settings-outline"
                                 size={20}
                                 color={color}
                             />

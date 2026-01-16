@@ -25,6 +25,7 @@ interface User {
     id: string;
     email: string;
     name?: string;
+    photoURL?: string;
 }
 
 interface AuthContextType {
@@ -46,6 +47,7 @@ function mapFirebaseUser(firebaseUser: FirebaseUser): User {
         id: firebaseUser.uid,
         email: firebaseUser.email || '',
         name: firebaseUser.displayName || undefined,
+        photoURL: firebaseUser.photoURL || undefined,
     };
 }
 
@@ -54,11 +56,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [authError, setAuthError] = useState<string | null>(null);
 
-    // Expo Auth Session for Google Sign-in (works in Expo Go)
+    // Expo Auth Session for Google Sign-in (works in Expo Go with proxy)
     const [request, response, promptAsync] = Google.useAuthRequest({
         webClientId: '247809272190-h2hkif95rb4ub2qsbes3nk8j8ogdtj32.apps.googleusercontent.com',
         androidClientId: '247809272190-g7nb702c4p2e7clpp5m7nn1ijq7r8ff9.apps.googleusercontent.com',
+        scopes: ['profile', 'email'],
     });
+
+    React.useEffect(() => {
+        if (request) {
+            console.log('📢 Google Redirect URI:', request.redirectUri);
+        }
+    }, [request]);
 
     useEffect(() => {
         if (response?.type === 'success') {

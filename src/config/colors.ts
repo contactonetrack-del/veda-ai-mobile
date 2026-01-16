@@ -3,35 +3,41 @@
  */
 
 export const colors = {
-    // Dark Theme (Default)
+    // Premium Dark Theme (ChatGPT-inspired)
     dark: {
-        background: '#020617',
-        card: '#0F172A',
-        cardBorder: '#1E293B',
-        text: '#F8FAFC',
-        subtext: '#94A3B8',
-        primary: '#10B981',
-        secondary: '#3B82F6',
-        accent: '#F59E0B',
+        background: '#212121',       // Main dark gray background
+        card: '#2F2F2F',             // Secondary surface
+        cardBorder: '#4E4E4E',
+        text: '#ECECEC',             // Primary text
+        subtext: '#B4B4B4',          // Secondary text
+        primary: '#10A37F',          // ChatGPT Emerald
+        secondary: '#10A37F',
+        accent: '#10A37F',
         error: '#EF4444',
-        inputBg: '#1E293B',
-        inputBorder: '#334155',
-        success: '#10B981',
+        inputBg: '#40414F',          // Input capsule background
+        inputBorder: 'transparent',
+        success: '#10A37F',
+        // Specific UI elements
+        chatUserBubble: '#2F2F2F',
+        chatAiBubble: 'transparent',
     },
-    // Light Theme
+    // Premium Light Theme
     light: {
-        background: '#F0F9FF',
-        card: '#FFFFFF',
-        cardBorder: '#E2E8F0',
-        text: '#1E293B',
-        subtext: '#64748B',
-        primary: '#059669', // Darker green for contrast
-        secondary: '#2563EB',
-        accent: '#D97706',
+        background: '#FFFFFF',
+        card: '#F7F7F8',
+        cardBorder: '#E5E5E5',
+        text: '#1A1A1A',
+        subtext: '#6B6B6B',
+        primary: '#10A37F',
+        secondary: '#10A37F',
+        accent: '#10A37F',
         error: '#DC2626',
-        inputBg: '#F1F5F9',
-        inputBorder: '#CBD5E1',
+        inputBg: '#F0F0F0', // Slightly darker than white
+        inputBorder: 'transparent',
         success: '#059669',
+        // Specific UI elements
+        chatUserBubble: '#F0F0F0',
+        chatAiBubble: 'transparent',
     },
 };
 
