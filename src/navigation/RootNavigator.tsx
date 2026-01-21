@@ -15,16 +15,19 @@ import AboutScreen from '../screens/AboutScreen';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import TermsScreen from '../screens/TermsScreen';
 import MemoryScreen from '../screens/MemoryScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import { useTheme } from '../context/ThemeContext';
+import { ScreenErrorBoundary } from '../components/common/ScreenErrorBoundary';
 
 export type RootStackParamList = {
-    Chat: undefined;
+    Chat: { chatId?: string };
     Settings: undefined;
     EditProfile: undefined;
     About: undefined;
     PrivacyPolicy: undefined;
     TermsOfService: undefined;
     Memory: undefined;
+    Profile: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -98,43 +101,93 @@ export default function RootNavigator({ onLogout }: RootNavigatorProps) {
         >
             <Stack.Screen
                 name="Chat"
-                options={{
-                    // specific override if needed, but FluidTransition is good
-                }}
             >
-                {(props) => <ChatScreen {...props} onLogout={onLogout} />}
+                {(props) => (
+                    <ScreenErrorBoundary screenName="Chat">
+                        <ChatScreen {...props} onLogout={onLogout} />
+                    </ScreenErrorBoundary>
+                )}
             </Stack.Screen>
 
             <Stack.Screen
                 name="Settings"
                 options={{
-                    presentation: 'transparentModal', // Better for glass effects
-                    animation: 'fade', // Modal fade often looks cleaner
+                    presentation: 'transparentModal',
+                    animation: 'fade',
                 }}
             >
-                {(props) => <SettingsScreen {...props} onLogout={onLogout} />}
+                {(props) => (
+                    <ScreenErrorBoundary screenName="Settings">
+                        <SettingsScreen {...props} onLogout={onLogout} />
+                    </ScreenErrorBoundary>
+                )}
             </Stack.Screen>
 
             <Stack.Screen
                 name="EditProfile"
-                component={EditProfileScreen}
                 options={{
                     presentation: 'modal',
                     animation: 'slide_from_bottom',
                 }}
-            />
-            <Stack.Screen name="About" component={AboutScreen} />
-            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-            <Stack.Screen name="TermsOfService" component={TermsScreen} />
+            >
+                {(props) => (
+                    <ScreenErrorBoundary screenName="EditProfile">
+                        <EditProfileScreen {...props} />
+                    </ScreenErrorBoundary>
+                )}
+            </Stack.Screen>
+
+            <Stack.Screen name="About">
+                {(props) => (
+                    <ScreenErrorBoundary screenName="About">
+                        <AboutScreen {...props} />
+                    </ScreenErrorBoundary>
+                )}
+            </Stack.Screen>
+
+            <Stack.Screen name="PrivacyPolicy">
+                {(props) => (
+                    <ScreenErrorBoundary screenName="PrivacyPolicy">
+                        <PrivacyPolicyScreen {...props} />
+                    </ScreenErrorBoundary>
+                )}
+            </Stack.Screen>
+
+            <Stack.Screen name="TermsOfService">
+                {(props) => (
+                    <ScreenErrorBoundary screenName="TermsOfService">
+                        <TermsScreen {...props} />
+                    </ScreenErrorBoundary>
+                )}
+            </Stack.Screen>
 
             <Stack.Screen
                 name="Memory"
-                component={MemoryScreen}
                 options={{
                     presentation: 'card',
                     animation: 'slide_from_right',
                 }}
-            />
+            >
+                {(props) => (
+                    <ScreenErrorBoundary screenName="Memory">
+                        <MemoryScreen {...props} />
+                    </ScreenErrorBoundary>
+                )}
+            </Stack.Screen>
+
+            <Stack.Screen
+                name="Profile"
+                options={{
+                    presentation: 'card',
+                    animation: 'slide_from_right',
+                }}
+            >
+                {(props) => (
+                    <ScreenErrorBoundary screenName="Profile">
+                        <ProfileScreen {...props} />
+                    </ScreenErrorBoundary>
+                )}
+            </Stack.Screen>
         </Stack.Navigator>
     );
 }

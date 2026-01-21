@@ -1,0 +1,63 @@
+{
+    "common": {
+        "welcome": "वेदा एआई में स्वागत बा",
+        "settings": "सेटिंग्स",
+        "language": "भाषा",
+        "on": "चालू",
+        "off": "बंद",
+        "cancel": "रद्द करीं",
+        "delete": "हटा दीं",
+        "save": "सहेजीं",
+        "manage": "प्रबंधन",
+        "success": "सफल",
+        "error": "त्रुटि"
+    },
+    "settings": {
+        "title": "सेटिंग्स",
+        "subtitle": "प्राथमिकता अउर खाता",
+        "sections": {
+            "appearance": "दिखावट",
+            "insights": "अंतर्दृष्टि",
+            "notifications": "सूचना",
+            "accessibility": "पहुँच",
+            "security": "सुरक्षा",
+            "general": "सामान्य",
+            "account": "खाता"
+        },
+        "profile": {
+            "free_plan": "फ्री प्लान",
+            "pro_plan": "प्रो प्लान",
+            "elite_plan": "एलीट प्लान"
+        },
+        "items": {
+            "dark_mode": "डार्क मोड",
+            "voice_settings": "आवाज़ सेटिंग्स",
+            "push_notifications": "पुश सूचना",
+            "daily_reminders": "दैनिक रि रिमाइंडर",
+            "reduce_motion": "गति कम करीं",
+            "haptic_feedback": "हैप्टिक फीडबैक",
+            "high_contrast": "हाई कंट्रास्ट मोड",
+            "app_lock": "ऐप लॉक",
+            "memory_bank": "मेमोरी बैंक",
+            "clear_history": "इतिहास मिटा दीं",
+            "log_out": "लॉग आउट"
+        },
+        "voice": {
+            "gender_male": "पुरुष",
+            "gender_female": "महिला"
+        },
+        "actions": {
+            "clear_history_confirm_title": "इतिहास मिटा दीं",
+            "clear_history_confirm_body": "का रउरा सब चैट इतिहास हमेशा खातिर मिटावे के चाहत बानी?",
+            "clear_history_success": "चैट इतिहास सफलतापूर्वक मिटा दिहल गइल",
+            "clear_history_error": "इतिहास मिटावे में विफल"
+        }
+    },
+    "usage": {
+        "title": "साप्ताहिक गतिविधि",
+        "subtitle": "प्रति दिन चैट",
+        "messages": "संदेश",
+        "chats": "चैट",
+        "streak": "लगातार"
+    }
+}

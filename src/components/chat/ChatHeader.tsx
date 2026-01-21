@@ -7,18 +7,39 @@ import { useNavigation } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../../context/AuthContext';
 import { GlassView } from '../common/GlassView';
+import { useFocusEffect } from '@react-navigation/native';
+import { ProfileService } from '../../services/ProfileService';
+import { useCallback, useState } from 'react';
 
 interface ChatHeaderProps {
     onOpenSidebar: () => void;
     onNewChat: () => void;
     currentModel?: string;
+    onStartVoice?: () => void;
 }
 
-export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'VEDA AI' }: ChatHeaderProps) {
+export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'VEDA AI', onStartVoice }: ChatHeaderProps) {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const navigation = useNavigation<any>();
     const { user } = useAuth();
+    const [profileAvatar, setProfileAvatar] = useState<string | null>(user?.photoURL || null);
+
+    useFocusEffect(
+        useCallback(() => {
+            const loadProfile = async () => {
+                if (user?.id) {
+                    const profile = await ProfileService.getProfile(user.id);
+                    if (profile.avatar) {
+                        setProfileAvatar(profile.avatar);
+                    } else if (user.photoURL) {
+                        setProfileAvatar(user.photoURL);
+                    }
+                }
+            };
+            loadProfile();
+        }, [user?.id, user?.photoURL])
+    );
 
     return (
         <GlassView
@@ -61,8 +82,23 @@ export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'V
                     <Text style={{ fontSize: 12, color: colors.subtext, marginLeft: 4 }}>v1.0</Text>
                 </View>
 
-                {/* Right: Profile */}
+                {/* Right: Profile & Voice */}
                 <View style={styles.rightRow}>
+                    {/* Voice Mode Button */}
+                    {onStartVoice && (
+                        <TouchableOpacity
+                            onPress={() => {
+                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                onStartVoice();
+                            }}
+                            style={[styles.circleButton, { backgroundColor: isDark ? '#2F2F2F' : '#F7F7F8', marginRight: 8 }]}
+                            accessibilityLabel="Start Voice Mode"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons name="headset" size={22} color={colors.text} />
+                        </TouchableOpacity>
+                    )}
+
                     <TouchableOpacity
                         onPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -72,9 +108,10 @@ export default function ChatHeader({ onOpenSidebar, onNewChat, currentModel = 'V
                         accessibilityLabel="Open settings and profile"
                         accessibilityRole="button"
                     >
-                        {user?.photoURL ? (
+
+                        {profileAvatar ? (
                             <Image
-                                source={{ uri: user.photoURL }}
+                                source={{ uri: profileAvatar }}
                                 style={{ width: 32, height: 32, borderRadius: 16 }}
                             />
                         ) : (

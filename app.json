@@ -45,7 +45,9 @@
           "imageWidth": 200
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-localization",
+      "expo-sqlite"
     ],
     "extra": {
       "router": {},

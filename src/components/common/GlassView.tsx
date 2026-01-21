@@ -58,9 +58,7 @@ export const GlassView: React.FC<GlassViewProps> = ({
                 end={{ x: 1, y: 1 }}
             />
 
-            <View style={styles.content}>
-                {children}
-            </View>
+            {children}
         </View>
     );
 };
@@ -74,8 +72,4 @@ const styles = StyleSheet.create({
             ios: 'transparent'
         }),
     },
-    content: {
-        // Ensure content sits above blur
-        zIndex: 1,
-    }
 });

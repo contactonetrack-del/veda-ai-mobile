@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, AccessibilityRole } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -16,7 +16,7 @@ interface SettingsRowProps {
     rightElement?: React.ReactNode;
     accessibilityLabel?: string;
     accessibilityHint?: string;
-    accessibilityRole?: any;
+    accessibilityRole?: AccessibilityRole;
 }
 
 export default function SettingsRow({

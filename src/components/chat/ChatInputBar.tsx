@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import {
     View,
     TextInput,
@@ -10,6 +10,7 @@ import {
     Keyboard,
     Image,
     ScrollView,
+    Text,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -21,16 +22,11 @@ import { duration, easing } from '../../config/animations';
 import { VoiceVisualizer } from './VoiceVisualizer';
 import SuggestionsCarousel from './SuggestionsCarousel';
 
-import MarkdownToolbar from './MarkdownToolbar';
+
 import { GlassView } from '../common/GlassView';
 
 
-export interface Attachment {
-    id: string;
-    uri: string;
-    type: 'image' | 'video' | 'file';
-    name?: string;
-}
+import { Attachment } from '../../types/chat';
 
 interface ChatInputBarProps {
     value: string;
@@ -45,9 +41,13 @@ interface ChatInputBarProps {
     attachments?: Attachment[];
     onRemoveAttachment?: (id: string) => void;
     audioLevel?: number;
+    useSearch?: boolean;
+    onToggleSearch?: () => void;
+    replyTo?: any;
+    onCancelReply?: () => void;
 }
 
-export default function ChatInputBar({
+const ChatInputBar = forwardRef<TextInput, ChatInputBarProps>(({
     value,
     onChangeText,
     onSend,
@@ -60,36 +60,32 @@ export default function ChatInputBar({
     attachments = [],
     onRemoveAttachment,
     audioLevel = 0,
-}: ChatInputBarProps) {
+    useSearch = false,
+    onToggleSearch,
+    replyTo,
+    onCancelReply,
+}, ref) => {
     const { colors, isDark } = useTheme();
     const insets = useSafeAreaInsets();
     const hasText = value.trim().length > 0;
 
     // Animation values
-    const sendButtonScale = useRef(new Animated.Value(0)).current;
-    const sendButtonOpacity = useRef(new Animated.Value(0)).current;
+    const sendButtonOpacity = useRef(new Animated.Value(hasText ? 1 : 0.5)).current;
     const recordingPulse = useRef(new Animated.Value(1)).current;
     const capsuleBorderAnim = useRef(new Animated.Value(0)).current;
     const inputRef = useRef<TextInput>(null);
     const [isFocused, setIsFocused] = React.useState(false);
-    const [selection, setSelection] = React.useState({ start: 0, end: 0 });
+
+    useImperativeHandle(ref, () => inputRef.current as TextInput);
 
 
-    // Animate send button appearance
+    // Animate send button opacity (Active/Inactive)
     useEffect(() => {
-        Animated.parallel([
-            Animated.spring(sendButtonScale, {
-                toValue: hasText ? 1 : 0,
-                friction: 8,
-                tension: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(sendButtonOpacity, {
-                toValue: hasText ? 1 : 0,
-                duration: duration.fast,
-                useNativeDriver: true,
-            }),
-        ]).start();
+        Animated.timing(sendButtonOpacity, {
+            toValue: hasText ? 1 : 0.5,
+            duration: duration.fast,
+            useNativeDriver: true,
+        }).start();
     }, [hasText]);
 
     // Recording pulse animation
@@ -152,33 +148,7 @@ export default function ChatInputBar({
         onAttachPress?.();
     };
 
-    // Markdown formatting handlers
-    const handleFormat = (prefix: string, suffix: string) => {
-        const before = value.substring(0, selection.start);
-        const selected = value.substring(selection.start, selection.end);
-        const after = value.substring(selection.end);
 
-        const newText = before + prefix + (selected || 'text') + suffix + after;
-        onChangeText(newText);
-
-        // Move cursor after the formatted text
-        const newPos = selection.start + prefix.length + (selected || 'text').length + suffix.length;
-        setTimeout(() => {
-            setSelection({ start: newPos, end: newPos });
-        }, 50);
-    };
-
-    const handleInsert = (text: string) => {
-        const before = value.substring(0, selection.start);
-        const after = value.substring(selection.end);
-        const newText = before + text + after;
-        onChangeText(newText);
-
-        const newPos = selection.start + text.length;
-        setTimeout(() => {
-            setSelection({ start: newPos, end: newPos });
-        }, 50);
-    };
 
 
     const borderColor = capsuleBorderAnim.interpolate({
@@ -203,12 +173,7 @@ export default function ChatInputBar({
                 />
             )}
 
-            {/* Markdown Toolbar */}
-            <MarkdownToolbar
-                visible={isFocused && !isRecording}
-                onFormat={handleFormat}
-                onInsert={handleInsert}
-            />
+
 
 
             {/* Attachment Preview Container */}
@@ -236,6 +201,21 @@ export default function ChatInputBar({
                 </ScrollView>
             )}
 
+            {/* Reply Preview */}
+            {replyTo && (
+                <View style={[styles.replyPreview, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]}>
+                    <View style={styles.replyContent}>
+                        <Text style={[styles.replyTitle, { color: colors.primary }]}>Replying to</Text>
+                        <Text numberOfLines={1} style={[styles.replyText, { color: colors.subtext }]}>
+                            {replyTo.content}
+                        </Text>
+                    </View>
+                    <TouchableOpacity onPress={onCancelReply} style={styles.cancelReply}>
+                        <Ionicons name="close-circle" size={20} color={colors.subtext} />
+                    </TouchableOpacity>
+                </View>
+            )}
+
             <View style={styles.inputRow}>
                 {/* Left Plus Button */}
                 <TouchableOpacity
@@ -255,20 +235,19 @@ export default function ChatInputBar({
                     <Ionicons name="add" size={24} color={colors.text} />
                 </TouchableOpacity>
 
-                {/* Input Capsule with Glass Effect */}
+                {/* Input Capsule with Glass Effect - Simplified to View to fix input issues */}
                 <Animated.View style={[
                     styles.capsuleContainer,
                     {
                         borderColor: borderColor,
                         borderWidth: 1.5,
                         borderRadius: borderRadius['2xl'],
+                        backgroundColor: isDark ? 'rgba(30,30,30,0.8)' : 'rgba(255,255,255,0.9)',
                     },
                     shadows.sm,
                 ]}>
-                    <GlassView
-                        intensity={50}
+                    <View
                         style={styles.glassCapsule}
-                        border={false}
                     >
                         <TextInput
                             style={[
@@ -291,8 +270,6 @@ export default function ChatInputBar({
                             ref={inputRef}
                             onFocus={() => setIsFocused(true)}
                             onBlur={() => setIsFocused(false)}
-                            onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-                            selection={selection}
                         />
 
 
@@ -302,6 +279,26 @@ export default function ChatInputBar({
                                 <VoiceVisualizer visible={isRecording} level={audioLevel} />
                             </View>
                         )}
+
+                        {/* Web Search Toggle */}
+                        <TouchableOpacity
+                            onPress={onToggleSearch}
+                            style={[
+                                styles.micButton,
+                                useSearch && {
+                                    backgroundColor: `${colors.primary}20`,
+                                },
+                            ]}
+                            activeOpacity={0.7}
+                            accessibilityLabel="Toggle web search"
+                            accessibilityRole="button"
+                        >
+                            <Ionicons
+                                name={useSearch ? "globe" : "globe-outline"}
+                                size={22}
+                                color={useSearch ? colors.primary : colors.subtext}
+                            />
+                        </TouchableOpacity>
 
                         <View style={styles.rightActions}>
                             {/* Mic Button */}
@@ -327,11 +324,12 @@ export default function ChatInputBar({
                                 </TouchableOpacity>
                             </Animated.View>
 
-                            {/* Send Button */}
+                            {/* Send Button - Always Visible, Opacity Change */}
                             <Animated.View
                                 style={{
-                                    transform: [{ scale: sendButtonScale }],
                                     opacity: sendButtonOpacity,
+                                    width: 34,
+                                    marginLeft: 8,
                                 }}
                             >
                                 <TouchableOpacity
@@ -356,12 +354,14 @@ export default function ChatInputBar({
                                 </TouchableOpacity>
                             </Animated.View>
                         </View>
-                    </GlassView>
+                    </View>
                 </Animated.View>
             </View>
         </View>
     );
-}
+});
+
+export default ChatInputBar;
 
 const styles = StyleSheet.create({
     container: {
@@ -378,29 +378,31 @@ const styles = StyleSheet.create({
     },
     attachmentList: {
         paddingHorizontal: spacing[4],
-        paddingBottom: spacing[2],
-        gap: spacing[2],
+        paddingVertical: spacing[3],
+        gap: spacing[3],
     },
     attachmentItem: {
-        width: 60,
-        height: 60,
-        borderRadius: 8,
+        width: 72,
+        height: 72,
+        borderRadius: 12,
         justifyContent: 'center',
         alignItems: 'center',
         position: 'relative',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
+        overflow: 'hidden',
     },
     attachmentThumb: {
         width: '100%',
         height: '100%',
-        borderRadius: 8,
+        borderRadius: 12,
     },
     removeAttachment: {
         position: 'absolute',
-        top: -8,
-        right: -8,
-        zIndex: 1,
+        top: -6,
+        right: -6,
+        zIndex: 10,
+        backgroundColor: '#020617',
+        borderRadius: 10,
     },
     plusButton: {
         width: touchTarget.md,
@@ -414,14 +416,13 @@ const styles = StyleSheet.create({
     capsuleContainer: {
         flex: 1,
         borderRadius: borderRadius['2xl'],
-        overflow: 'hidden', // Ensure glass doesn't bleed
         minHeight: 52,
     },
     glassCapsule: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: spacing[2],
+        paddingVertical: spacing[3], // Increased padding
         paddingLeft: spacing[4],
         paddingRight: spacing[2],
         width: '100%',
@@ -438,16 +439,20 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
+        flexShrink: 1,
         fontSize: 16,
-        paddingVertical: spacing[1],
+        paddingVertical: Platform.OS === 'ios' ? spacing[3] : spacing[2], // Increased padding for better visibility
         fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
         marginRight: spacing[2],
-        lineHeight: 22,
+        lineHeight: 24, // increased line height
+        paddingBottom: spacing[3], // Explicit bottom padding
+        minHeight: 48, // Increased minHeight to prevent collapse
     },
     rightActions: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: spacing[2],
+        flexShrink: 0,
     },
     micButton: {
         width: 36,
@@ -462,5 +467,29 @@ const styles = StyleSheet.create({
         borderRadius: 17,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    replyPreview: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing[4],
+        paddingVertical: spacing[2],
+        marginHorizontal: spacing[4],
+        marginBottom: spacing[2],
+        borderRadius: borderRadius.lg,
+        gap: spacing[2],
+    },
+    replyContent: {
+        flex: 1,
+    },
+    replyTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    replyText: {
+        fontSize: 14,
+    },
+    cancelReply: {
+        padding: 4,
     },
 });

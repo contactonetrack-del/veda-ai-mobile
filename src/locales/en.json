@@ -1,0 +1,63 @@
+{
+    "common": {
+        "welcome": "Welcome to Veda AI",
+        "settings": "Settings",
+        "language": "Language",
+        "on": "On",
+        "off": "Off",
+        "cancel": "Cancel",
+        "delete": "Delete",
+        "save": "Save",
+        "manage": "Manage",
+        "success": "Success",
+        "error": "Error"
+    },
+    "settings": {
+        "title": "Settings",
+        "subtitle": "Preferences & Account",
+        "sections": {
+            "appearance": "APPEARANCE",
+            "insights": "INSIGHTS",
+            "notifications": "NOTIFICATIONS",
+            "accessibility": "ACCESSIBILITY",
+            "security": "SECURITY",
+            "general": "GENERAL",
+            "account": "ACCOUNT"
+        },
+        "profile": {
+            "free_plan": "FREE PLAN",
+            "pro_plan": "PRO PLAN",
+            "elite_plan": "ELITE PLAN"
+        },
+        "items": {
+            "dark_mode": "Dark Mode",
+            "voice_settings": "Voice Settings",
+            "push_notifications": "Push Notifications",
+            "daily_reminders": "Daily Reminders",
+            "reduce_motion": "Reduce Motion",
+            "haptic_feedback": "Haptic Feedback",
+            "high_contrast": "High Contrast Mode",
+            "app_lock": "App Lock",
+            "memory_bank": "Memory Bank",
+            "clear_history": "Clear History",
+            "log_out": "Log Out"
+        },
+        "voice": {
+            "gender_male": "Male",
+            "gender_female": "Female"
+        },
+        "actions": {
+            "clear_history_confirm_title": "Clear History",
+            "clear_history_confirm_body": "Delete all chat history permanently?",
+            "clear_history_success": "Chat history cleared successfully",
+            "clear_history_error": "Failed to clear history"
+        }
+    },
+    "usage": {
+        "title": "Weekly Activity",
+        "subtitle": "Chats per day",
+        "messages": "Messages",
+        "chats": "Chats",
+        "streak": "Streak"
+    }
+}

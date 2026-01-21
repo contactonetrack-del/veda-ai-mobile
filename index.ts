@@ -1,4 +1,5 @@
 import { registerRootComponent } from 'expo';
+import 'fast-text-encoding'; // Polyfill for TextDecoder (Critical for Streaming)
 
 import App from './App';
 

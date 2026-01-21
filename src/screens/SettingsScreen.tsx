@@ -1,31 +1,41 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, Alert, Platform, TouchableOpacity, Image, Switch, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useTranslation } from 'react-i18next';
 import { GlassView } from '../components/common/GlassView';
 import SettingsSection from '../components/settings/SettingsSection';
 import SettingsRow from '../components/settings/SettingsRow';
 import UsageStats from '../components/settings/UsageStats';
 import VoiceSettingsModal, { VoiceSettings, DEFAULT_VOICE_SETTINGS } from '../components/VoiceSettingsModal';
+import NotificationManager from '../services/NotificationManager';
+import LanguageSettingsModal from '../components/LanguageSettingsModal';
+import BiometricService from '../services/BiometricService';
+import { ProfileService } from '../services/ProfileService';
+import { LANGUAGES } from '../services/LanguageService';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as api from '../services/api';
 import { shadows } from '../config/colors';
 
-interface SettingsScreenProps {
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
+
+type SettingsScreenProps = NativeStackScreenProps<RootStackParamList, 'Settings'> & {
     onLogout: () => void;
-    navigation: any;
-}
+};
 
 export default function SettingsScreen({ onLogout, navigation }: SettingsScreenProps) {
     const { colors, isDark, setThemePreference, themePreference } = useTheme();
     const { user } = useAuth();
     const { language, setLanguage } = useLanguage();
+    const { t } = useTranslation();
     const insets = useSafeAreaInsets();
 
     // Local state for modals/settings
@@ -36,7 +46,30 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
     const [reducedMotion, setReducedMotion] = useState(false);
     const [hapticsEnabled, setHapticsEnabled] = useState(true);
 
-    // Initial load
+    // New Feature States
+    const [showLanguageSettings, setShowLanguageSettings] = useState(false);
+    const [biometricEnabled, setBiometricEnabled] = useState(false);
+    const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+    // Profile State
+    const [profileAvatar, setProfileAvatar] = useState<string | null>(user?.photoURL || null);
+
+    // Refresh profile when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            const loadProfile = async () => {
+                if (user?.id) {
+                    const profile = await ProfileService.getProfile(user.id);
+                    if (profile.avatar) {
+                        setProfileAvatar(profile.avatar);
+                    } else if (user.photoURL) {
+                        setProfileAvatar(user.photoURL);
+                    }
+                }
+            };
+            loadProfile();
+        }, [user?.id, user?.photoURL])
+    );
     useEffect(() => {
         const loadSettings = async () => {
             const savedVoice = await AsyncStorage.getItem('voiceSettings');
@@ -53,15 +86,27 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
 
             const savedHaptics = await AsyncStorage.getItem('hapticsEnabled');
             if (savedHaptics !== null) setHapticsEnabled(JSON.parse(savedHaptics));
+
+            // Check Biometrics
+            const bioAvail = await BiometricService.hasHardwareAsync();
+            setBiometricAvailable(bioAvail);
+            if (bioAvail) {
+                const bioEnabled = await BiometricService.isLockEnabled();
+                setBiometricEnabled(bioEnabled);
+            }
         };
         loadSettings();
     }, []);
 
-    const saveSetting = async (key: string, value: any, setter: (val: any) => void) => {
+    const saveSetting = async <T,>(key: string, value: T, setter: (val: T) => void) => {
         setter(value);
         // 1. Save locally immediately (Optimistic UI)
         await AsyncStorage.setItem(key, JSON.stringify(value));
         Haptics.selectionAsync();
+
+        if (key === 'dailyReminders') {
+            await NotificationManager.syncNotifications();
+        }
 
         // 2. Sync to Cloud (Fire and Forget)
         if (user?.id !== 'guest') {
@@ -72,7 +117,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         [key]: value
                     }
                 };
-                api.updateUserProfile(payload).catch((err: any) => console.log('Cloud sync failed:', err));
+                api.updateUserProfile(payload).catch((err: unknown) => console.log('Cloud sync failed:', err));
             } catch (e) {
                 // Error handled in the catch above
             }
@@ -89,6 +134,16 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
     const handleThemeToggle = () => {
         const nextTheme = themePreference === 'system' ? 'light' : themePreference === 'light' ? 'dark' : 'system';
         setThemePreference(nextTheme);
+    };
+
+    const handleBiometricToggle = async (value: boolean) => {
+        const success = await BiometricService.setLockEnabled(value);
+        if (success) {
+            setBiometricEnabled(value);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+        }
     };
 
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -108,47 +163,65 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                 }),
             }]
         }]}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>Settings</Text>
-            <Text style={[styles.headerSubtitle, { color: colors.subtext }]}>Preferences & Account</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t('settings.title')}</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.subtext }]}>{t('settings.subtitle')}</Text>
         </Animated.View>
     );
 
-    const renderProfileCard = () => (
-        <View
-            style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFF', ...shadows.md }]}
-            accessibilityLabel={`Profile card for ${user?.id === 'guest' ? 'Guest User' : user?.email?.split('@')[0] || 'User'}`}
-            accessible={true}
-        >
-            <LinearGradient
-                colors={isDark ? ['#334155', '#1e293b'] : ['#E2E8F0', '#F8FAFC']}
-                style={styles.profileBackground}
-            />
-            <Image
-                source={require('../../assets/icon.png')}
-                style={styles.avatar}
-                accessibilityLabel="Your profile picture"
-            />
-            <View style={styles.profileInfo}>
-                <Text style={[styles.profileName, { color: colors.text }]}>
-                    {user?.id === 'guest' ? 'Guest User' : user?.email?.split('@')[0] || 'User'}
-                </Text>
-                <View
-                    style={styles.planBadge}
-                    accessibilityLabel={`Subscription plan: ${user?.id === 'guest' ? 'Free Plan' : 'PRO'}`}
-                >
-                    <Text style={styles.planText}>{user?.id === 'guest' ? 'Free Plan' : 'PRO'}</Text>
-                </View>
-            </View>
-            <TouchableOpacity
-                style={styles.editButton}
-                onPress={() => navigation.navigate('EditProfile')}
-                accessibilityLabel="Edit profile"
-                accessibilityRole="button"
+    const renderProfileCard = () => {
+        const displayName = user?.name || user?.email?.split('@')[0] || 'User';
+        const isGuest = user?.id === 'guest';
+        // Use context subscription tier if available, fall back to guest logic
+        const subTier = user?.subscriptionTier || (isGuest ? 'free' : 'pro');
+        const planName = t(`settings.profile.${subTier}_plan`);
+
+        return (
+            <View
+                style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFF', borderColor: colors.cardBorder }]}
+                accessibilityLabel={`Profile card for ${displayName}`}
+                accessible={true}
             >
-                <Ionicons name="pencil" size={16} color={colors.primary} />
-            </TouchableOpacity>
-        </View>
-    );
+                <LinearGradient
+                    colors={isDark ? ['#334155', '#1e293b'] : ['#E2E8F0', '#F8FAFC']}
+                    style={styles.profileBackground}
+                />
+
+                <TouchableOpacity
+                    style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}
+                    onPress={() => navigation.navigate('Profile' as never)}
+                >
+                    <Image
+                        source={profileAvatar ? { uri: profileAvatar } : require('../../assets/icon.png')}
+                        style={styles.avatar}
+                        accessibilityLabel="Your profile picture"
+                    />
+                    <View style={styles.profileInfo}>
+                        <Text style={[styles.profileName, { color: colors.text }]}>
+                            {displayName}
+                        </Text>
+                        <View
+                            style={[
+                                styles.planBadge,
+                                { backgroundColor: planName.includes('FREE') ? colors.subtext : '#6366F1' }
+                            ]}
+                            accessibilityLabel={`Subscription plan: ${planName}`}
+                        >
+                            <Text style={styles.planText}>{planName}</Text>
+                        </View>
+                    </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={() => navigation.navigate('EditProfile')}
+                    accessibilityLabel="Edit profile"
+                    accessibilityRole="button"
+                >
+                    <Ionicons name="pencil" size={16} color={colors.primary} />
+                </TouchableOpacity>
+            </View>
+        );
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -163,11 +236,11 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
 
                 {/* Personalization */}
                 <View style={styles.sectionTitleContainer}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>APPEARANCE</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('settings.sections.appearance')}</Text>
                 </View>
                 <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
-                        label="Dark Mode"
+                        label={t('settings.items.dark_mode')}
                         icon="moon"
                         value={undefined}
                         isLast={false}
@@ -184,9 +257,9 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         }
                     />
                     <SettingsRow
-                        label="Voice Settings"
+                        label={t('settings.items.voice_settings')}
                         icon="mic-outline"
-                        value={`${voiceSettings.gender === 'male' ? 'Male' : 'Female'} • ${voiceSettings.rate}x`}
+                        value={`${voiceSettings.gender === 'male' ? t('settings.voice.gender_male') : t('settings.voice.gender_female')} • ${voiceSettings.speed ?? 1}x`}
                         onPress={() => setShowVoiceSettings(true)}
                         accessibilityHint="Adjust AI voice gender and speech speed"
                         isLast
@@ -195,18 +268,18 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
 
                 {/* Insights */}
                 <View style={styles.sectionTitleContainer}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>INSIGHTS</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('settings.sections.insights')}</Text>
                 </View>
                 <UsageStats />
 
 
                 {/* Notifications */}
                 <View style={styles.sectionTitleContainer}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>NOTIFICATIONS</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('settings.sections.notifications')}</Text>
                 </View>
                 <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
-                        label="Push Notifications"
+                        label={t('settings.items.push_notifications')}
                         icon="notifications-outline"
                         value={undefined}
                         rightElement={
@@ -218,7 +291,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         }
                     />
                     <SettingsRow
-                        label="Daily Reminders"
+                        label={t('settings.items.daily_reminders')}
                         icon="alarm-outline"
                         value={undefined}
                         isLast
@@ -234,11 +307,11 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
 
                 {/* Accessibility */}
                 <View style={styles.sectionTitleContainer}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>ACCESSIBILITY</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('settings.sections.accessibility')}</Text>
                 </View>
                 <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
-                        label="Reduce Motion"
+                        label={t('settings.items.reduce_motion')}
                         icon="move-outline"
                         value={undefined}
                         rightElement={
@@ -250,7 +323,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         }
                     />
                     <SettingsRow
-                        label="Haptic Feedback"
+                        label={t('settings.items.haptic_feedback')}
                         icon="finger-print-outline"
                         value={undefined}
                         rightElement={
@@ -262,7 +335,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         }
                     />
                     <SettingsRow
-                        label="High Contrast Mode"
+                        label={t('settings.items.high_contrast')}
                         icon="contrast-outline"
                         value={undefined}
                         isLast
@@ -279,22 +352,46 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                     />
                 </GlassView>
 
+                {/* Security */}
+                {biometricAvailable && (
+                    <>
+                        <View style={styles.sectionTitleContainer}>
+                            <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('settings.sections.security')}</Text>
+                        </View>
+                        <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
+                            <SettingsRow
+                                label={t('settings.items.app_lock')}
+                                icon="scan-outline" // Use scan-outline for biometric detection look
+                                value={biometricEnabled ? t('common.on') : t('common.off')}
+                                isLast
+                                rightElement={
+                                    <Switch
+                                        value={biometricEnabled}
+                                        onValueChange={handleBiometricToggle}
+                                        trackColor={{ false: '#767577', true: colors.primary }}
+                                    />
+                                }
+                            />
+                        </GlassView>
+                    </>
+                )}
+
 
                 {/* General */}
                 <View style={styles.sectionTitleContainer}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>GENERAL</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('settings.sections.general')}</Text>
                 </View>
                 <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
-                        label="Language"
+                        label={t('common.language')}
                         icon="language-outline"
-                        value={api.SUPPORTED_LANGUAGES[language]?.name || 'English'}
-                        onPress={() => Alert.alert('Language', 'Please change language from the Chat screen header.')}
+                        value={LANGUAGES.find(l => l.code === language)?.nativeName || 'English'}
+                        onPress={() => setShowLanguageSettings(true)}
                     />
                     <SettingsRow
-                        label="Memory Bank"
+                        label={t('settings.items.memory_bank')}
                         icon="hardware-chip-outline"
-                        value="Manage"
+                        value={t('common.manage')}
                         onPress={() => navigation.navigate('Memory')}
                         isLast
                     />
@@ -302,28 +399,28 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
 
                 {/* Account Actions */}
                 <View style={styles.sectionTitleContainer}>
-                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>ACCOUNT</Text>
+                    <Text style={[styles.sectionTitle, { color: colors.primary }]}>{t('settings.sections.account')}</Text>
                 </View>
                 <GlassView style={[styles.cardContainer, styles.glassCardOverride]}>
                     <SettingsRow
-                        label="Clear History"
+                        label={t('settings.items.clear_history')}
                         icon="trash-outline"
                         color={colors.error}
                         onPress={() => Alert.alert(
-                            'Clear History',
-                            'Delete all chat history permanently?',
+                            t('settings.actions.clear_history_confirm_title'),
+                            t('settings.actions.clear_history_confirm_body'),
                             [
-                                { text: 'Cancel', style: 'cancel' },
+                                { text: t('common.cancel'), style: 'cancel' },
                                 {
-                                    text: 'Delete',
+                                    text: t('common.delete'),
                                     style: 'destructive',
                                     onPress: async () => {
                                         try {
                                             await AsyncStorage.multiRemove(['chat_sessions', 'current_chat', 'chat_messages']);
                                             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                                            Alert.alert('Success', 'Chat history cleared successfully');
+                                            Alert.alert(t('common.success'), t('settings.actions.clear_history_success'));
                                         } catch (error) {
-                                            Alert.alert('Error', 'Failed to clear history');
+                                            Alert.alert(t('common.error'), t('settings.actions.clear_history_error'));
                                         }
                                     }
                                 }
@@ -332,7 +429,7 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                         )}
                     />
                     <SettingsRow
-                        label="Log Out"
+                        label={t('settings.items.log_out')}
                         icon="log-out-outline"
                         color={colors.error}
                         onPress={onLogout}
@@ -351,6 +448,11 @@ export default function SettingsScreen({ onLogout, navigation }: SettingsScreenP
                 onClose={() => setShowVoiceSettings(false)}
                 currentSettings={voiceSettings}
                 onSave={handleSaveVoice}
+            />
+
+            <LanguageSettingsModal
+                visible={showLanguageSettings}
+                onClose={() => setShowLanguageSettings(false)}
             />
         </View>
     );

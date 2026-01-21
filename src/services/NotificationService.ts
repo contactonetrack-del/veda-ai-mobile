@@ -1,98 +1,93 @@
-/**
- * Notification Service
- * Handles push notification permissions and scheduling
- */
-
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Device from 'expo-device';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 
-// Configure how notifications should handle when app is in foreground
 Notifications.setNotificationHandler({
     handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
-    } as any),
+        shouldShowBanner: true,
+        shouldShowList: true,
+    }),
 });
 
-class NotificationService {
+// ... (skipping register function as it was fine mostly, wait, I can't skip intermediate lines in replace_file_content if I want to maintain file structure, but I can target specific blocks using multi_replace or multiple calls.
+// Actually, I can just replace the Handler block and the Listener/Schedule blocks separately.
+// Let's do that.
 
-    /**
-     * Register for push notifications
-     */
-    async registerForPushNotificationsAsync(): Promise<string | null> {
-        if (!Device.isDevice) {
-            console.log('Must use physical device for Push Notifications');
-            return null;
-        }
 
-        // Check if running in Expo Go
-        const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-        if (isExpoGo) {
-            console.log('Push Notifications are not supported in Expo Go (SDK 53+). using local notifications only.');
-            return null; // Return null gracefully to avoid crash
-        }
+export async function registerForPushNotificationsAsync() {
+    let token;
 
-        let token = null;
+    if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#FF231F7C',
+        });
+    }
 
-        // Check existing permissions
+    if (Device.isDevice) {
         const { status: existingStatus } = await Notifications.getPermissionsAsync();
         let finalStatus = existingStatus;
-
-        // Request if not granted
         if (existingStatus !== 'granted') {
             const { status } = await Notifications.requestPermissionsAsync();
             finalStatus = status;
         }
-
         if (finalStatus !== 'granted') {
-            return null;
+            console.log('Failed to get push token for push notification!');
+            return;
         }
-
         try {
-            // Get the token (for Expo Push)
-            token = (await Notifications.getExpoPushTokenAsync()).data;
-            console.log('Expo Push Token:', token);
-
-            // On Android, we need to specify a channel
-            if (Platform.OS === 'android') {
-                await Notifications.setNotificationChannelAsync('default', {
-                    name: 'default',
-                    importance: Notifications.AndroidImportance.MAX,
-                    vibrationPattern: [0, 250, 250, 250],
-                    lightColor: '#FF231F7C',
-                });
+            const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
+            if (!projectId) {
+                console.error('Project ID not found in Constants');
             }
-        } catch (error) {
-            console.log('Error getting push token:', error);
+            token = (await Notifications.getExpoPushTokenAsync({
+                projectId,
+            })).data;
+            console.log(token);
+        } catch (e) {
+            console.error(e);
         }
-
-        return token;
+    } else {
+        console.log('Must use physical device for Push Notifications');
     }
 
-    /**
-     * Schedule a local notification
-     */
-    async scheduleNotification(title: string, body: string, triggerSeconds: number = 0) {
-        await Notifications.scheduleNotificationAsync({
-            content: {
-                title,
-                body,
-                sound: true,
-            },
-            trigger: triggerSeconds > 0 ? { seconds: triggerSeconds, type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL } : null,
-        });
-    }
-
-    /**
-     * Cancel all notifications
-     */
-    async cancelAllNotifications() {
-        await Notifications.cancelAllScheduledNotificationsAsync();
-    }
+    return token;
 }
 
-export default new NotificationService();
+export function addNotificationListeners(
+    onNotificationReceived: (notification: Notifications.Notification) => void,
+    onResponseReceived: (response: Notifications.NotificationResponse) => void
+) {
+    const notificationListener = Notifications.addNotificationReceivedListener(onNotificationReceived);
+    const responseListener = Notifications.addNotificationResponseReceivedListener(onResponseReceived);
+
+    return () => {
+        notificationListener.remove();
+        responseListener.remove();
+    };
+}
+
+export async function scheduleNotification(title: string, body: string, seconds: number) {
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title,
+            body,
+            sound: true,
+        },
+        trigger: {
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds,
+            repeats: false,
+        },
+    });
+}
+
+export async function cancelAllNotifications() {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+}

@@ -49,10 +49,10 @@ export function SourcesCitation({
                 toolbarColor: isDark ? '#121212' : '#ffffff',
                 controlsColor: colors.primary,
             });
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('Error opening URL:', error);
             // Fallback
-            Linking.openURL(url).catch(err => console.error('Linking error:', err));
+            Linking.openURL(url).catch((err: unknown) => console.error('Linking error:', err));
         }
     };
 
@@ -62,6 +62,12 @@ export function SourcesCitation({
         } catch {
             return 'Source';
         }
+    };
+
+    const getFaviconUrl = (source: Source) => {
+        if (source.favicon) return source.favicon;
+        const hostname = getHostname(source.url);
+        return `https://www.google.com/s2/favicons?domain=${hostname}&sz=64`;
     };
 
     return (
@@ -81,38 +87,62 @@ export function SourcesCitation({
                 <>
                     <View style={styles.header}>
                         <Ionicons name="link-outline" size={13} color={colors.subtext} />
-                        <Text style={[styles.headerText, { color: colors.subtext }]}>Related Sources</Text>
+                        <Text style={[styles.headerText, { color: colors.subtext }]}>Source Citations</Text>
                     </View>
-                    <View style={styles.sourcesList}>
-                        {citableSources.slice(0, 3).map((source, index) => (
-                            <TouchableOpacity
-                                key={index}
-                                style={[styles.sourceItem, {
-                                    backgroundColor: colors.inputBg,
-                                    borderColor: colors.cardBorder
-                                }]}
-                                onPress={() => handleOpenLink(source.url)}
-                                activeOpacity={0.7}
-                            >
-                                <View style={styles.sourceInfo}>
-                                    {source.favicon ? (
+
+                    {/* Featured Source (First one) */}
+                    <TouchableOpacity
+                        style={[styles.featuredCard, {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : colors.backgroundSecondary,
+                            borderColor: colors.cardBorder
+                        }]}
+                        onPress={() => handleOpenLink(citableSources[0].url)}
+                        activeOpacity={0.8}
+                    >
+                        <Image
+                            source={{ uri: getFaviconUrl(citableSources[0]) }}
+                            style={styles.featuredFavicon}
+                        />
+                        <View style={styles.featuredContent}>
+                            <Text style={[styles.featuredTitle, { color: colors.text }]} numberOfLines={1}>
+                                {citableSources[0].title || getHostname(citableSources[0].url)}
+                            </Text>
+                            <Text style={[styles.featuredUrl, { color: colors.subtext }]} numberOfLines={1}>
+                                {getHostname(citableSources[0].url)}
+                            </Text>
+                        </View>
+                        <Ionicons name="chevron-forward" size={16} color={colors.subtext} />
+                    </TouchableOpacity>
+
+                    {/* Remaining Sources in Grid */}
+                    {citableSources.length > 1 && (
+                        <View style={styles.sourcesGrid}>
+                            {citableSources.slice(1, 4).map((source, index) => (
+                                <TouchableOpacity
+                                    key={index + 1}
+                                    style={[styles.gridItem, {
+                                        backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : colors.backgroundSecondary,
+                                        borderColor: colors.cardBorder
+                                    }]}
+                                    onPress={() => handleOpenLink(source.url)}
+                                    activeOpacity={0.7}
+                                >
+                                    <View style={styles.gridInfo}>
                                         <Image
-                                            source={{ uri: source.favicon }}
-                                            style={styles.favicon}
+                                            source={{ uri: getFaviconUrl(source) }}
+                                            style={styles.gridFavicon}
                                         />
-                                    ) : (
-                                        <Ionicons name="document-text-outline" size={12} color={colors.primary} />
-                                    )}
-                                    <Text
-                                        style={[styles.sourceTitle, { color: colors.text }]}
-                                        numberOfLines={1}
-                                    >
-                                        {source.title || getHostname(source.url)}
-                                    </Text>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
-                    </View>
+                                        <Text
+                                            style={[styles.gridTitle, { color: colors.text }]}
+                                            numberOfLines={1}
+                                        >
+                                            {source.title || getHostname(source.url)}
+                                        </Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    )}
                 </>
             )}
 
@@ -153,7 +183,7 @@ export function AgentBadge({ agent, intent }: AgentBadgeProps) {
         }
     };
 
-    const getAgentIcon = () => {
+    const getAgentIcon = (): keyof typeof Ionicons.glyphMap => {
         switch (intent) {
             case 'search': return 'search-outline';
             case 'wellness': return 'fitness-outline';
@@ -170,7 +200,7 @@ export function AgentBadge({ agent, intent }: AgentBadgeProps) {
             backgroundColor: color + '20',
             borderColor: color + '40'
         }]}>
-            <Ionicons name={getAgentIcon() as any} size={10} color={color} />
+            <Ionicons name={getAgentIcon()} size={10} color={color} />
             <Text style={[styles.agentBadgeText, { color }]}>
                 {agent.replace('Agent', '')}
             </Text>
@@ -196,30 +226,55 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         letterSpacing: 0.8,
     },
-    sourcesList: {
+    featuredCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 14,
+        borderWidth: 1,
+        marginBottom: 8,
+    },
+    featuredFavicon: {
+        width: 24,
+        height: 24,
+        borderRadius: 6,
+        marginRight: 12,
+    },
+    featuredContent: {
+        flex: 1,
+    },
+    featuredTitle: {
+        fontSize: 14,
+        fontWeight: '600',
+        marginBottom: 2,
+    },
+    featuredUrl: {
+        fontSize: 11,
+    },
+    sourcesGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 10,
+        gap: 8,
     },
-    sourceItem: {
-        paddingHorizontal: 12,
+    gridItem: {
+        flex: 1,
+        minWidth: '45%',
+        paddingHorizontal: 10,
         paddingVertical: 8,
         borderRadius: 10,
         borderWidth: 1,
-        minWidth: 100,
-        maxWidth: '48%',
     },
-    sourceInfo: {
+    gridInfo: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 8,
     },
-    favicon: {
-        width: 12,
-        height: 12,
-        borderRadius: 2,
+    gridFavicon: {
+        width: 14,
+        height: 14,
+        borderRadius: 3,
     },
-    sourceTitle: {
+    gridTitle: {
         fontSize: 11,
         fontWeight: '500',
         flex: 1,

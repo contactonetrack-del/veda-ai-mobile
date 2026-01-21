@@ -1,30 +1,126 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    Modal,
+    TouchableOpacity,
+    ScrollView,
+    ActivityIndicator,
+    Animated,
+    Platform,
+    Dimensions,
+    Switch
+} from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import SpeechService from '../services/SpeechService';
 import { useTheme } from '../context/ThemeContext';
 import * as Haptics from 'expo-haptics';
 
 export interface VoiceSettings {
+    voiceId: string;
+    voiceName: string;
     gender: 'male' | 'female';
-    persona: string;
-    rate: number;
+    speed: number;
     pitch: number;
+    language: string;
+    autoSpeak: boolean;
 }
 
-export const VOICE_PERSONAS = [
-    { id: 'default', name: 'VEDA', description: 'Calm & Balanced', color: '#10B981', pitch: 1.0, rate: 0.95, testMsg: 'Namaste! I am VEDA, your wellness guide.' },
-    { id: 'enthusiast', name: 'Ananya', description: 'Energetic & Motivating', color: '#F59E0B', pitch: 1.15, rate: 1.05, testMsg: 'Hey there! I am Ananya, ready to energize your day!' },
-    { id: 'expert', name: 'Dr. Sharma', description: 'Professional & Precise', color: '#3B82F6', pitch: 0.85, rate: 0.9, testMsg: 'Good day. I am Dr. Sharma, here to assist you professionally.' },
-    { id: 'friendly', name: 'Priya', description: 'Warm & Supportive', color: '#EC4899', pitch: 1.1, rate: 0.95, testMsg: 'Hello friend! I am Priya, always here for you.' },
-    { id: 'guru', name: 'Guruji', description: 'Wise & Traditional', color: '#8B5CF6', pitch: 0.75, rate: 0.85, testMsg: 'Om Shanti. I am Guruji, your guide to wisdom.' }
+// Premium voice presets inspired by top TTS platforms (OpenAI, ElevenLabs)
+export const PREMIUM_VOICES = [
+    {
+        id: 'alloy',
+        name: 'Alloy',
+        description: 'Neutral & Versatile',
+        gender: 'female' as const,
+        icon: '🎭',
+        color: '#6366F1',
+        pitch: 1.0,
+        speed: 0.95,
+        testPhrase: 'Hello! I am Alloy, your versatile AI voice assistant.'
+    },
+    {
+        id: 'echo',
+        name: 'Echo',
+        description: 'Deep & Smooth',
+        gender: 'male' as const,
+        icon: '🎵',
+        color: '#3B82F6',
+        pitch: 0.85,
+        speed: 0.90,
+        testPhrase: 'Hello! I am Echo, with a deep and smooth voice.'
+    },
+    {
+        id: 'nova',
+        name: 'Nova',
+        description: 'Warm & Bright',
+        gender: 'female' as const,
+        icon: '✨',
+        color: '#EC4899',
+        pitch: 1.1,
+        speed: 1.0,
+        testPhrase: 'Hi there! I am Nova, bringing warmth to every word.'
+    },
+    {
+        id: 'shimmer',
+        name: 'Shimmer',
+        description: 'Soft & Clear',
+        gender: 'female' as const,
+        icon: '💫',
+        color: '#14B8A6',
+        pitch: 1.05,
+        speed: 0.95,
+        testPhrase: 'Hello! I am Shimmer, with a soft and clear voice.'
+    },
+    {
+        id: 'onyx',
+        name: 'Onyx',
+        description: 'Professional & Bold',
+        gender: 'male' as const,
+        icon: '🖤',
+        color: '#374151',
+        pitch: 0.80,
+        speed: 0.92,
+        testPhrase: 'Greetings! I am Onyx, professional and confident.'
+    },
+    {
+        id: 'fable',
+        name: 'Fable',
+        description: 'Storytelling',
+        gender: 'male' as const,
+        icon: '📚',
+        color: '#8B5CF6',
+        pitch: 0.95,
+        speed: 0.88,
+        testPhrase: 'Welcome! I am Fable, here to narrate your journey.'
+    }
+];
+
+const SPEED_OPTIONS = [
+    { label: '0.5x', value: 0.5 },
+    { label: '0.75x', value: 0.75 },
+    { label: '1x', value: 1.0 },
+    { label: '1.25x', value: 1.25 },
+    { label: '1.5x', value: 1.5 },
+    { label: '2x', value: 2.0 }
+];
+
+const PITCH_OPTIONS = [
+    { label: 'Low', value: 0.7 },
+    { label: 'Normal', value: 1.0 },
+    { label: 'High', value: 1.3 }
 ];
 
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
+    voiceId: 'alloy',
+    voiceName: 'Alloy',
     gender: 'female',
-    persona: 'default',
-    rate: 0.95,
-    pitch: 1.0
+    speed: 1.0,
+    pitch: 1.0,
+    language: 'en',
+    autoSpeak: true
 };
 
 interface VoiceSettingsModalProps {
@@ -36,144 +132,180 @@ interface VoiceSettingsModalProps {
 
 export default function VoiceSettingsModal({ visible, onClose, currentSettings, onSave }: VoiceSettingsModalProps) {
     const { colors, isDark } = useTheme();
-    const [gender, setGender] = useState<'male' | 'female'>(currentSettings.gender);
-    const [selectedPersona, setSelectedPersona] = useState<string>(currentSettings.persona);
-    const [isTesting, setIsTesting] = useState(false);
+    const [selectedVoice, setSelectedVoice] = useState<string>(currentSettings.voiceId || 'alloy');
+    const [speed, setSpeed] = useState<number>(currentSettings.speed || 1.0);
+    const [pitch, setPitch] = useState<number>(currentSettings.pitch || 1.0);
+    const [autoSpeak, setAutoSpeak] = useState<boolean>(currentSettings.autoSpeak ?? true);
+    const [isTesting, setIsTesting] = useState<string | null>(null);
+    const slideAnim = React.useRef(new Animated.Value(300)).current;
+    const fadeAnim = React.useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         if (visible) {
-            setGender(currentSettings.gender);
-            setSelectedPersona(currentSettings.persona);
+            setSelectedVoice(currentSettings.voiceId || 'alloy');
+            setSpeed(currentSettings.speed || 1.0);
+            setPitch(currentSettings.pitch || 1.0);
+            setAutoSpeak(currentSettings.autoSpeak ?? true);
+
+            Animated.parallel([
+                Animated.spring(slideAnim, {
+                    toValue: 0,
+                    useNativeDriver: true,
+                    damping: 20,
+                    stiffness: 90
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 1,
+                    duration: 200,
+                    useNativeDriver: true
+                })
+            ]).start();
+        } else {
+            Animated.parallel([
+                Animated.timing(slideAnim, {
+                    toValue: 300,
+                    duration: 200,
+                    useNativeDriver: true
+                }),
+                Animated.timing(fadeAnim, {
+                    toValue: 0,
+                    duration: 200,
+                    useNativeDriver: true
+                })
+            ]).start();
         }
     }, [visible, currentSettings]);
 
     const handleSave = () => {
-        const persona = VOICE_PERSONAS.find(p => p.id === selectedPersona) || VOICE_PERSONAS[0];
+        const voice = PREMIUM_VOICES.find(v => v.id === selectedVoice) || PREMIUM_VOICES[0];
         const newSettings: VoiceSettings = {
-            gender,
-            persona: selectedPersona,
-            rate: persona.rate,
-            pitch: persona.pitch
+            voiceId: voice.id,
+            voiceName: voice.name,
+            gender: voice.gender,
+            speed,
+            pitch,
+            language: 'en',
+            autoSpeak
         };
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onSave(newSettings);
         onClose();
     };
 
-    const handleTestVoice = async () => {
-        if (isTesting) {
+    const handleTestVoice = async (voiceId: string) => {
+        if (isTesting === voiceId) {
             await SpeechService.stop();
-            setIsTesting(false);
+            setIsTesting(null);
             return;
         }
 
-        const persona = VOICE_PERSONAS.find(p => p.id === selectedPersona) || VOICE_PERSONAS[0];
-        setIsTesting(true);
+        const voice = PREMIUM_VOICES.find(v => v.id === voiceId);
+        if (!voice) return;
 
-        // We use the persona's test message and pitch/rate
-        // Note: SpeechService handles gender internally for voice selection
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsTesting(voiceId);
+
         await SpeechService.speak(
-            persona.testMsg,
-            'en', // Test in English
-            gender,
-            persona.rate,
-            persona.pitch,
-            () => setIsTesting(false)
+            voice.testPhrase,
+            'en',
+            voice.gender,
+            speed,
+            voice.pitch,
+            () => setIsTesting(null)
         );
+    };
+
+    const selectedVoiceData = PREMIUM_VOICES.find(v => v.id === selectedVoice) || PREMIUM_VOICES[0];
+
+    // Helper to add opacity to hex color safely
+    const getTransparentColor = (hex: string, opacity: string = '20') => {
+        return hex + opacity;
     };
 
     return (
         <Modal
             visible={visible}
-            animationType="slide"
+            animationType="none"
             transparent={true}
             onRequestClose={onClose}
-            accessibilityViewIsModal={true}
-
         >
-            <View style={styles.overlay}>
-                <View style={[styles.content, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+                <TouchableOpacity style={styles.backdrop} onPress={onClose} activeOpacity={1} />
+
+                <Animated.View
+                    style={[
+                        styles.content,
+                        {
+                            backgroundColor: isDark ? 'rgba(17, 24, 39, 0.98)' : 'rgba(255, 255, 255, 0.98)',
+                            transform: [{ translateY: slideAnim }]
+                        }
+                    ]}
+                >
+                    {Platform.OS === 'ios' && (
+                        <BlurView intensity={80} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+                    )}
+
+                    {/* Handle */}
+                    <View style={styles.handleContainer}>
+                        <View style={[styles.handle, { backgroundColor: colors.cardBorder }]} />
+                    </View>
+
                     {/* Header */}
-                    <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-                        <View style={styles.titleContainer}>
-                            <MaterialCommunityIcons name="account-voice" size={24} color={colors.primary} />
+                    <View style={styles.header}>
+                        <View style={styles.titleRow}>
+                            <MaterialCommunityIcons name="microphone-settings" size={24} color={colors.primary} />
                             <Text style={[styles.title, { color: colors.text }]}>Voice Settings</Text>
                         </View>
-                        <TouchableOpacity onPress={onClose}>
-                            <Ionicons name="close" size={24} color={colors.subtext} />
+                        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <Ionicons name="close" size={22} color={colors.subtext} />
                         </TouchableOpacity>
                     </View>
 
                     <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
-                        {/* Gender Section */}
+                        {/* Voice Selection */}
                         <View style={styles.section}>
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>Voice Gender</Text>
-                            <View style={styles.genderContainer}>
-                                <TouchableOpacity
-                                    style={[
-                                        styles.genderButton,
-                                        { backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
-                                        gender === 'female' && { borderColor: '#EC4899', backgroundColor: isDark ? 'rgba(236, 72, 153, 0.1)' : '#FDF2F8' }
-                                    ]}
-                                    onPress={() => { Haptics.selectionAsync(); setGender('female'); }}
-                                    accessibilityLabel="Select Female Voice"
-                                    accessibilityRole="radio"
-                                    accessibilityState={{ selected: gender === 'female' }}
-                                >
-                                    <Ionicons name="woman" size={24} color={gender === 'female' ? '#EC4899' : colors.subtext} />
-                                    <Text style={[styles.genderText, { color: gender === 'female' ? '#EC4899' : colors.subtext }]}>Female</Text>
-                                    {gender === 'female' && <View style={styles.checkBadge}><Ionicons name="checkmark" size={12} color="#fff" /></View>}
-                                </TouchableOpacity>
+                            <Text style={[styles.sectionLabel, { color: colors.subtext }]}>SELECT VOICE</Text>
+                            <View style={styles.voiceGrid}>
+                                {PREMIUM_VOICES.map((voice) => {
+                                    const isSelected = selectedVoice === voice.id;
+                                    const isPlaying = isTesting === voice.id;
 
-                                <TouchableOpacity
-                                    style={[
-                                        styles.genderButton,
-                                        { backgroundColor: colors.inputBg, borderColor: colors.inputBorder },
-                                        gender === 'male' && { borderColor: '#3B82F6', backgroundColor: isDark ? 'rgba(59, 130, 246, 0.1)' : '#EFF6FF' }
-                                    ]}
-                                    onPress={() => { Haptics.selectionAsync(); setGender('male'); }}
-                                    accessibilityLabel="Select Male Voice"
-                                    accessibilityRole="radio"
-                                    accessibilityState={{ selected: gender === 'male' }}
-                                >
-                                    <Ionicons name="man" size={24} color={gender === 'male' ? '#3B82F6' : colors.subtext} />
-                                    <Text style={[styles.genderText, { color: gender === 'male' ? '#3B82F6' : colors.subtext }]}>Male</Text>
-                                    {gender === 'male' && <View style={[styles.checkBadge, { backgroundColor: '#3B82F6' }]}><Ionicons name="checkmark" size={12} color="#fff" /></View>}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-
-                        {/* Persona Section */}
-                        <View style={styles.section}>
-                            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-                                <Ionicons name="sparkles" size={16} color={colors.primary} /> Voice Persona
-                            </Text>
-                            <View style={styles.personaGrid}>
-                                {VOICE_PERSONAS.map((persona) => {
-                                    const isSelected = selectedPersona === persona.id;
                                     return (
                                         <TouchableOpacity
-                                            key={persona.id}
+                                            key={voice.id}
                                             style={[
-                                                styles.personaCard,
-                                                { backgroundColor: colors.inputBg, borderColor: isSelected ? persona.color : colors.inputBorder },
-                                                isSelected && { backgroundColor: isDark ? `${persona.color}15` : `${persona.color}10` }
+                                                styles.voiceCard,
+                                                {
+                                                    backgroundColor: isDark ? colors.card : '#F8FAFC',
+                                                    borderColor: isSelected ? voice.color : 'transparent'
+                                                }
                                             ]}
-                                            onPress={() => { Haptics.selectionAsync(); setSelectedPersona(persona.id); }}
-                                            accessibilityLabel={`Select Persona ${persona.name}, ${persona.description}`}
-                                            accessibilityRole="radio"
-                                            accessibilityState={{ selected: isSelected }}
-
+                                            onPress={() => {
+                                                Haptics.selectionAsync();
+                                                setSelectedVoice(voice.id);
+                                            }}
+                                            activeOpacity={0.7}
                                         >
-                                            <View style={[styles.personaIcon, { backgroundColor: `${persona.color}20` }]}>
-                                                <Text style={[styles.personaInitial, { color: persona.color }]}>{persona.name.charAt(0)}</Text>
+                                            <View style={[styles.voiceIcon, { backgroundColor: getTransparentColor(voice.color) }]}>
+                                                <Text style={styles.voiceEmoji}>{voice.icon}</Text>
                                             </View>
-                                            <View style={styles.personaInfo}>
-                                                <Text style={[styles.personaName, { color: colors.text }]}>{persona.name}</Text>
-                                                <Text style={[styles.personaDesc, { color: colors.subtext }]}>{persona.description}</Text>
+                                            <View style={styles.voiceInfo}>
+                                                <Text style={[styles.voiceName, { color: colors.text }]}>{voice.name}</Text>
+                                                <Text style={[styles.voiceDesc, { color: colors.subtext }]}>{voice.description}</Text>
                                             </View>
+                                            <TouchableOpacity
+                                                style={[styles.playButton, { backgroundColor: isPlaying ? voice.color : getTransparentColor(voice.color) }]}
+                                                onPress={() => handleTestVoice(voice.id)}
+                                            >
+                                                {isPlaying ? (
+                                                    <ActivityIndicator size="small" color="#fff" />
+                                                ) : (
+                                                    <Ionicons name="play" size={14} color={voice.color} />
+                                                )}
+                                            </TouchableOpacity>
                                             {isSelected && (
-                                                <View style={[styles.personaCheck, { backgroundColor: persona.color }]}>
-                                                    <Ionicons name="checkmark" size={12} color="#fff" />
+                                                <View style={[styles.selectedBadge, { backgroundColor: voice.color }]}>
+                                                    <Ionicons name="checkmark" size={10} color="#fff" />
                                                 </View>
                                             )}
                                         </TouchableOpacity>
@@ -182,41 +314,127 @@ export default function VoiceSettingsModal({ visible, onClose, currentSettings, 
                             </View>
                         </View>
 
-                        {/* Test Voice Button */}
+                        {/* Speed Control */}
+                        <View style={styles.section}>
+                            <Text style={[styles.sectionLabel, { color: colors.subtext }]}>SPEED</Text>
+                            <View style={styles.optionRow}>
+                                {SPEED_OPTIONS.map((option) => (
+                                    <TouchableOpacity
+                                        key={option.label}
+                                        style={[
+                                            styles.optionChip,
+                                            {
+                                                backgroundColor: speed === option.value
+                                                    ? selectedVoiceData.color
+                                                    : isDark ? colors.card : '#F1F5F9',
+                                                borderColor: speed === option.value ? selectedVoiceData.color : 'transparent'
+                                            }
+                                        ]}
+                                        onPress={() => {
+                                            Haptics.selectionAsync();
+                                            setSpeed(option.value);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.optionText,
+                                            { color: speed === option.value ? '#fff' : colors.text }
+                                        ]}>
+                                            {option.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Pitch Control */}
+                        <View style={styles.section}>
+                            <Text style={[styles.sectionLabel, { color: colors.subtext }]}>PITCH</Text>
+                            <View style={styles.optionRow}>
+                                {PITCH_OPTIONS.map((option) => (
+                                    <TouchableOpacity
+                                        key={option.label}
+                                        style={[
+                                            styles.optionChip,
+                                            styles.pitchChip,
+                                            {
+                                                backgroundColor: pitch === option.value
+                                                    ? selectedVoiceData.color
+                                                    : isDark ? colors.card : '#F1F5F9',
+                                                borderColor: pitch === option.value ? selectedVoiceData.color : 'transparent'
+                                            }
+                                        ]}
+                                        onPress={() => {
+                                            Haptics.selectionAsync();
+                                            setPitch(option.value);
+                                        }}
+                                    >
+                                        <Text style={[
+                                            styles.optionText,
+                                            { color: pitch === option.value ? '#fff' : colors.text }
+                                        ]}>
+                                            {option.label}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
+
+                        {/* Auto Speak Toggle */}
+                        <View style={styles.section}>
+                            <View style={styles.toggleRow}>
+                                <View style={styles.toggleInfo}>
+                                    <Text style={[styles.toggleLabel, { color: colors.text }]}>Auto Speak</Text>
+                                    <Text style={[styles.toggleDesc, { color: colors.subtext }]}>Automatically speak AI responses</Text>
+                                </View>
+                                <Switch
+                                    value={autoSpeak}
+                                    onValueChange={(value) => {
+                                        Haptics.selectionAsync();
+                                        setAutoSpeak(value);
+                                    }}
+                                    trackColor={{ false: isDark ? '#374151' : '#D1D5DB', true: selectedVoiceData.color }}
+                                    thumbColor={autoSpeak ? '#fff' : '#f4f3f4'}
+                                />
+                            </View>
+                        </View>
+
+                        {/* Preview Button */}
                         <TouchableOpacity
-                            style={[
-                                styles.testButton,
-                                isTesting && styles.testButtonActive,
-                                { borderColor: colors.inputBorder }
-                            ]}
-                            onPress={handleTestVoice}
+                            style={[styles.previewButton, { borderColor: colors.cardBorder }]}
+                            onPress={() => handleTestVoice(selectedVoice)}
                         >
-                            {isTesting ? (
+                            {isTesting === selectedVoice ? (
                                 <>
-                                    <ActivityIndicator size="small" color="#fff" style={{ marginRight: 8 }} />
-                                    <Text style={styles.testButtonTextActive}>Playing...</Text>
+                                    <ActivityIndicator size="small" color={selectedVoiceData.color} style={{ marginRight: 10 }} />
+                                    <Text style={[styles.previewText, { color: selectedVoiceData.color }]}>Playing...</Text>
                                 </>
                             ) : (
                                 <>
                                     <Ionicons name="volume-high" size={20} color={colors.text} />
-                                    <Text style={[styles.testButtonText, { color: colors.text }]}>Test Voice</Text>
+                                    <Text style={[styles.previewText, { color: colors.text }]}>Preview Voice</Text>
                                 </>
                             )}
                         </TouchableOpacity>
-
                     </ScrollView>
 
                     {/* Footer */}
                     <View style={[styles.footer, { borderTopColor: colors.cardBorder }]}>
-                        <TouchableOpacity style={[styles.footerBtn, styles.cancelBtn]} onPress={onClose}>
-                            <Text style={styles.cancelBtnText}>Cancel</Text>
+                        <TouchableOpacity
+                            style={[styles.footerBtn, styles.cancelBtn, { backgroundColor: isDark ? colors.card : '#F1F5F9' }]}
+                            onPress={onClose}
+                        >
+                            <Text style={[styles.cancelText, { color: colors.subtext }]}>Cancel</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={[styles.footerBtn, styles.saveBtn]} onPress={handleSave}>
-                            <Text style={styles.saveBtnText}>Save Settings</Text>
+                        <TouchableOpacity
+                            style={[styles.footerBtn, styles.saveBtn, { backgroundColor: selectedVoiceData.color }]}
+                            onPress={handleSave}
+                        >
+                            <Ionicons name="checkmark" size={18} color="#fff" style={{ marginRight: 6 }} />
+                            <Text style={styles.saveText}>Save</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
-            </View>
+                </Animated.View>
+            </Animated.View>
         </Modal>
     );
 }
@@ -227,67 +445,100 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'flex-end',
     },
+    backdrop: {
+        ...StyleSheet.absoluteFillObject,
+    },
     content: {
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-        maxHeight: '85%',
-        width: '100%',
-        paddingBottom: 20,
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        maxHeight: '90%',
+        overflow: 'hidden',
+    },
+    handleContainer: {
+        alignItems: 'center',
+        paddingTop: 12,
+    },
+    handle: {
+        width: 36,
+        height: 4,
+        borderRadius: 2,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
-        borderBottomWidth: 1,
+        paddingHorizontal: 20,
+        paddingVertical: 16,
     },
-    titleContainer: {
+    titleRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 10,
     },
     title: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: 'bold',
     },
+    closeButton: {
+        padding: 8,
+        borderRadius: 20,
+    },
     scrollContent: {
-        padding: 20,
+        paddingHorizontal: 20,
     },
     section: {
         marginBottom: 24,
     },
-    sectionTitle: {
-        fontSize: 16,
-        fontWeight: '600',
+    sectionLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        letterSpacing: 1,
         marginBottom: 12,
+    },
+    voiceGrid: {
+        gap: 10,
+    },
+    voiceCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-    },
-    genderContainer: {
-        flexDirection: 'row',
-        gap: 12,
-    },
-    genderButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 16,
+        padding: 14,
         borderRadius: 16,
         borderWidth: 2,
-        gap: 8,
         position: 'relative',
     },
-    genderText: {
-        fontWeight: '600',
-        fontSize: 16,
+    voiceIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    checkBadge: {
+    voiceEmoji: {
+        fontSize: 22,
+    },
+    voiceInfo: {
+        flex: 1,
+        marginLeft: 14,
+    },
+    voiceName: {
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    voiceDesc: {
+        fontSize: 12,
+        marginTop: 2,
+    },
+    playButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    selectedBadge: {
         position: 'absolute',
-        top: -8,
-        right: -8,
-        backgroundColor: '#EC4899',
+        top: -6,
+        right: -6,
         width: 20,
         height: 20,
         borderRadius: 10,
@@ -296,97 +547,78 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#fff',
     },
-    personaGrid: {
-        gap: 12,
+    optionRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
     },
-    personaCard: {
+    optionChip: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    pitchChip: {
+        flex: 1,
+        alignItems: 'center',
+    },
+    optionText: {
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    toggleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: 16,
-        borderWidth: 1,
-        gap: 12,
-        position: 'relative',
+        justifyContent: 'space-between',
+        paddingVertical: 8,
     },
-    personaIcon: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    personaInitial: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    personaInfo: {
+    toggleInfo: {
         flex: 1,
     },
-    personaName: {
+    toggleLabel: {
         fontSize: 16,
         fontWeight: '600',
         marginBottom: 4,
     },
-    personaDesc: {
-        fontSize: 12,
+    toggleDesc: {
+        fontSize: 14,
     },
-    personaCheck: {
-        width: 20,
-        height: 20,
-        borderRadius: 10,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    testButton: {
+    previewButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 14,
-        borderRadius: 12,
+        padding: 16,
+        borderRadius: 14,
         borderWidth: 1,
-        backgroundColor: 'transparent',
-        marginBottom: 12,
+        marginBottom: 16,
     },
-    testButtonActive: {
-        backgroundColor: '#10B981',
-        borderWidth: 0,
-    },
-    testButtonText: {
+    previewText: {
         fontWeight: '600',
-        marginLeft: 8,
-    },
-    testButtonTextActive: {
-        color: '#fff',
-        fontWeight: '600',
+        marginLeft: 10,
     },
     footer: {
         flexDirection: 'row',
         padding: 20,
-        paddingTop: 16,
         gap: 12,
         borderTopWidth: 1,
     },
     footerBtn: {
         flex: 1,
-        padding: 16,
-        borderRadius: 14,
+        flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        padding: 16,
+        borderRadius: 16,
     },
-    cancelBtn: {
-        backgroundColor: 'transparent',
-    },
-    saveBtn: {
-        backgroundColor: '#10B981',
-    },
-    cancelBtnText: {
-        color: '#94A3B8',
+    cancelBtn: {},
+    saveBtn: {},
+    cancelText: {
         fontWeight: '600',
         fontSize: 16,
     },
-    saveBtnText: {
+    saveText: {
         color: '#fff',
-        fontWeight: '600',
+        fontWeight: '700',
         fontSize: 16,
-    },
+    }
 });

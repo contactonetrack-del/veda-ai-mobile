@@ -16,7 +16,11 @@ import { GlassView } from '../components/common/GlassView';
 import * as Haptics from 'expo-haptics';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getMemories, deleteMemory, clearMemory } from '../services/api';
+import { useFocusEffect } from '@react-navigation/native'; // Added this import
+import { NativeStackScreenProps } from '@react-navigation/native-stack'; // Added this import
+import { RootStackParamList } from '../navigation/RootNavigator'; // Added this import
 
 interface Memory {
     id: string;
@@ -28,9 +32,12 @@ interface Memory {
     created_at: string;
 }
 
-export default function MemoryScreen({ navigation }: { navigation: any }) {
+type Props = NativeStackScreenProps<RootStackParamList, 'Memory'>; // Added this type definition
+
+export default function MemoryScreen({ navigation }: Props) {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
+    const { t } = useLanguage(); // Added this line
     const insets = useSafeAreaInsets();
     const [memories, setMemories] = useState<Memory[]>([]);
     const [isLoading, setIsLoading] = useState(false);

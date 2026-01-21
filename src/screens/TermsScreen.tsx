@@ -7,14 +7,16 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassView } from '../components/common/GlassView';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useNavigation } from '@react-navigation/native';
 
-export default function TermsScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'TermsOfService'>;
+
+export default function TermsScreen({ navigation }: Props) {
     const { colors } = useTheme();
     const { t } = useLanguage();
-    const navigation = useNavigation();
     const insets = useSafeAreaInsets();
 
     return (

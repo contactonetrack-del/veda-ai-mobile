@@ -25,7 +25,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { getChats, deleteChat as apiDeleteChat } from '../../services/api';
 import { ListItemSkeleton } from '../common/SkeletonLoader';
-import KnowledgeBaseModal from '../modals/KnowledgeBaseModal';
+import KnowledgeBaseModal, { KnowledgeDocument } from '../modals/KnowledgeBaseModal';
+import { ChatSession } from '../../types/chat';
 
 
 interface SidebarDrawerProps {
@@ -33,7 +34,7 @@ interface SidebarDrawerProps {
     onClose: () => void;
     onNewChat: () => void;
     onSelectChat: (chatId: string) => void;
-    onSelectContextDocument?: (document: any) => void;
+    onSelectContextDocument?: (document: KnowledgeDocument) => void;
 }
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -61,7 +62,7 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
 
     const [showKnowledgeModal, setShowKnowledgeModal] = useState(false);
 
-    const [allChats, setAllChats] = useState<any[]>([]);
+    const [allChats, setAllChats] = useState<ChatSession[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [refreshing, setRefreshing] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -124,15 +125,14 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
             );
         }
 
-        const groups: { title: string; items: any[] }[] = [];
         const now = new Date();
         const yesterdayDate = new Date();
         yesterdayDate.setDate(now.getDate() - 1);
 
-        const today: any[] = [];
-        const yesterday: any[] = [];
-        const previous7Days: any[] = [];
-        const older: any[] = [];
+        const today: ChatSession[] = [];
+        const yesterday: ChatSession[] = [];
+        const previous7Days: ChatSession[] = [];
+        const older: ChatSession[] = [];
 
         filtered.forEach(chat => {
             const date = new Date(chat.created_at || new Date());
@@ -148,6 +148,7 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
             }
         });
 
+        const groups: { title: string; items: ChatSession[] }[] = [];
         if (today.length > 0) groups.push({ title: 'Today', items: today });
         if (yesterday.length > 0) groups.push({ title: 'Yesterday', items: yesterday });
         if (previous7Days.length > 0) groups.push({ title: 'Previous 7 Days', items: previous7Days });
@@ -163,15 +164,17 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
         try {
             const response = await getChats();
             const chats = response.chats || response || [];
-            const formattedChats = chats.map((chat: any) => ({
+            const formattedChats: ChatSession[] = chats.map((chat: any) => ({
                 id: chat.id || chat.chat_id,
                 title: chat.title || chat.name || 'Untitled Chat',
                 preview: chat.last_message || chat.preview || 'No messages yet',
                 created_at: chat.created_at || chat.updated_at || new Date().toISOString(),
                 folder_id: chat.folder_id || 'all',
+                updated_at: chat.updated_at || new Date().toISOString(),
+                user_id: chat.user_id || 'guest'
             }));
             setAllChats(formattedChats);
-        } catch (e) {
+        } catch (e: unknown) {
             console.log('Failed to load history', e);
             setAllChats([]);
         } finally {
@@ -184,7 +187,15 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
         if (isOpen && user?.id !== 'guest') {
             loadHistory();
         } else if (isOpen && user?.id === 'guest') {
-            setAllChats([{ id: 'local', title: 'Current Session', preview: 'Chatting as Guest', created_at: new Date().toISOString(), folder_id: 'all' }]);
+            setAllChats([{
+                id: 'local',
+                title: 'Current Session',
+                preview: 'Chatting as Guest',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                user_id: 'guest',
+                folder_id: 'all'
+            }]);
         }
     }, [isOpen, user]);
 
@@ -370,7 +381,7 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                                     }}
                                 >
                                     <Ionicons
-                                        name={folder.icon as any}
+                                        name={folder.icon as keyof typeof Ionicons.glyphMap}
                                         size={14}
                                         color={activeFolderId === folder.id ? colors.primary : colors.subtext}
                                     />
@@ -414,8 +425,8 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                         <SectionList
                             style={styles.historyList}
                             sections={historyGroups.map(g => ({ title: g.title, data: g.items }))}
-                            keyExtractor={(item: any) => item.id}
-                            renderItem={({ item }: { item: any }) => (
+                            keyExtractor={(item) => item.id}
+                            renderItem={({ item }: { item: ChatSession }) => (
                                 <Swipeable
                                     renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item.id)}
                                     renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.id)}
@@ -548,19 +559,32 @@ export default function SidebarDrawer({ isOpen, onClose, onNewChat, onSelectChat
                             accessibilityRole="button"
                             accessibilityHint="View your account details and app settings"
                         >
-                            <Image
-                                source={require('../../../assets/icon.png')} // Fallback or user avatar
-                                style={styles.userAvatar}
-                            />
+                            {user?.photoURL ? (
+                                <Image
+                                    source={{ uri: user.photoURL }}
+                                    style={styles.userAvatar}
+                                />
+                            ) : (
+                                <View style={[styles.userAvatar, styles.userAvatarPlaceholder, { backgroundColor: colors.primary }]}>
+                                    <Text style={styles.userAvatarInitial}>
+                                        {user?.name?.charAt(0)?.toUpperCase() ||
+                                            user?.email?.charAt(0)?.toUpperCase() || 'G'}
+                                    </Text>
+                                </View>
+                            )}
                             <View style={styles.userInfo}>
                                 <Text style={[styles.userName, { color: colors.text }]}>
-                                    {user?.id === 'guest' ? 'Guest User' : user?.email?.split('@')[0] || 'User'}
+                                    {user?.id === 'guest'
+                                        ? 'Guest User'
+                                        : user?.name || user?.email?.split('@')[0] || 'User'}
                                 </Text>
-                                <Text style={[styles.userStatus, { color: colors.subtext }]}>
-                                    {user?.id === 'guest' ? 'Free Plan' : 'Premium'}
-                                </Text>
+                                <View style={styles.userPlanBadge}>
+                                    <Text style={[styles.userStatus, { color: user?.id === 'guest' ? colors.subtext : '#10B981' }]}>
+                                        {user?.id === 'guest' ? 'Free Plan' : 'Premium'}
+                                    </Text>
+                                </View>
                             </View>
-                            <Ionicons name="ellipsis-horizontal" size={20} color={colors.subtext} />
+                            <Ionicons name="chevron-forward" size={18} color={colors.subtext} />
                         </TouchableOpacity>
                     </View>
                 </Animated.View>
@@ -753,6 +777,19 @@ const styles = StyleSheet.create({
     },
     userStatus: {
         fontSize: 12,
+    },
+    userAvatarPlaceholder: {
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    userAvatarInitial: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#fff',
+    },
+    userPlanBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     emptyContainer: {
         alignItems: 'center',

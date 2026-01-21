@@ -14,13 +14,17 @@ import { useNavigation } from '@react-navigation/native';
 import { TouchableOpacity } from 'react-native';
 import { GlassView } from '../components/common/GlassView';
 
-export default function AboutScreen() {
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
+
+type Props = NativeStackScreenProps<RootStackParamList, 'About'>;
+
+export default function AboutScreen({ navigation }: Props) {
     const { colors, isDark } = useTheme();
     const { t } = useLanguage();
-    const navigation = useNavigation();
     const insets = useSafeAreaInsets();
 
-    const features = [
+    const features: { icon: keyof typeof Ionicons.glyphMap; title: string; desc: string; color: string }[] = [
         { icon: 'language-outline', title: '25 Languages', desc: '100% India Coverage', color: '#3B82F6' },
         { icon: 'mic-outline', title: 'Voice AI', desc: 'Speak Naturally', color: '#10B981' },
         { icon: 'people-outline', title: '12 Experts', desc: 'Domain Specialists', color: '#8B5CF6' },
@@ -62,7 +66,7 @@ export default function AboutScreen() {
                     {features.map((feat, idx) => (
                         <GlassView key={idx} style={styles.featureCard} intensity={30}>
                             <View style={[styles.featureIcon, { backgroundColor: `${feat.color}20` }]}>
-                                <Ionicons name={feat.icon as any} size={24} color={feat.color} />
+                                <Ionicons name={feat.icon} size={24} color={feat.color} />
                             </View>
                             <Text style={[styles.featureTitle, { color: colors.text }]}>{feat.title}</Text>
                             <Text style={[styles.featureDesc, { color: colors.subtext }]}>{feat.desc}</Text>

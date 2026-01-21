@@ -12,10 +12,12 @@ import {
     FlatList,
     Image,
     TouchableOpacity,
-    SafeAreaView,
     Animated,
     Easing,
+    ImageSourcePropType,
+    ViewToken,
 } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
 import { brand, spacing, typography, borderRadius, duration } from '../config';
 import { AnimatedButton } from '../components/common';
@@ -27,8 +29,8 @@ interface OnboardingSlide {
     id: string;
     title: string;
     description: string;
-    image: any;
-    icon?: string;
+    image: ImageSourcePropType;
+    icon?: keyof typeof Ionicons.glyphMap;
     accentColor?: string;
 }
 
@@ -221,7 +223,7 @@ function AnimatedIllustration({ item, isActive }: { item: OnboardingSlide; isAct
                     },
                 ]}
             >
-                <Ionicons name={item.icon as any} size={24} color={accentColor} />
+                <Ionicons name={item.icon || 'sparkles'} size={24} color={accentColor} />
             </Animated.View>
         </View>
     );
@@ -229,13 +231,14 @@ function AnimatedIllustration({ item, isActive }: { item: OnboardingSlide; isAct
 
 export default function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
     const { colors, isDark } = useTheme();
+    const insets = useSafeAreaInsets();
     const [currentIndex, setCurrentIndex] = useState(0);
     const scrollX = useRef(new Animated.Value(0)).current;
     const slidesRef = useRef<FlatList>(null);
 
-    const viewableItemsChanged = useRef(({ viewableItems }: any) => {
+    const viewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
         if (viewableItems[0]) {
-            setCurrentIndex(viewableItems[0].index);
+            setCurrentIndex(viewableItems[0].index ?? 0);
         }
     }).current;
 
@@ -285,7 +288,7 @@ export default function OnboardingScreen({ onComplete }: { onComplete: () => voi
                 ref={slidesRef}
             />
 
-            <View style={styles.bottomContainer}>
+            <View style={[styles.bottomContainer, { paddingBottom: Math.max(insets.bottom + 16, 32) }]}>
                 <View style={styles.paginator}>
                     {SLIDES.map((_, i) => {
                         const inputRange = [(i - 1) * width, i * width, (i + 1) * width];

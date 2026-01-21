@@ -21,11 +21,12 @@ import * as WebBrowser from 'expo-web-browser';
 
 WebBrowser.maybeCompleteAuthSession();
 
-interface User {
+export interface User {
     id: string;
     email: string;
     name?: string;
     photoURL?: string;
+    subscriptionTier?: 'free' | 'pro' | 'elite';
 }
 
 interface AuthContextType {
@@ -48,6 +49,7 @@ function mapFirebaseUser(firebaseUser: FirebaseUser): User {
         email: firebaseUser.email || '',
         name: firebaseUser.displayName || undefined,
         photoURL: firebaseUser.photoURL || undefined,
+        subscriptionTier: 'pro', // Default to PRO for all authenticated users for now
     };
 }
 
@@ -102,8 +104,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             setUser(mapFirebaseUser(userCredential.user));
-        } catch (error: any) {
-            const message = getErrorMessage(error.code);
+        } catch (error: unknown) {
+            const errorCode = (error as { code?: string }).code || 'unknown';
+            const message = getErrorMessage(errorCode);
             setAuthError(message);
             throw new Error(message);
         }
@@ -123,9 +126,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 id: userCredential.user.uid,
                 email: userCredential.user.email || '',
                 name: name,
+                subscriptionTier: 'pro',
             });
-        } catch (error: any) {
-            const message = getErrorMessage(error.code);
+        } catch (error: unknown) {
+            const errorCode = (error as { code?: string }).code || 'unknown';
+            const message = getErrorMessage(errorCode);
             setAuthError(message);
             throw new Error(message);
         }
@@ -145,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             id: 'guest',
             email: 'guest@veda.ai',
             name: 'Guest User',
+            photoURL: undefined,
+            subscriptionTier: 'free',
         });
     }
 
@@ -159,7 +166,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 return;
             }
             // The response useEffect will handle the credential exchange
-        } catch (error: any) {
+        } catch (error: unknown) {
+            console.error('Google Sign-in error:', error);
             setAuthError('Google Sign-in failed. Please try again.');
             throw error;
         }

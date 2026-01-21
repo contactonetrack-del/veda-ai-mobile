@@ -1,10 +1,26 @@
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import { EventEmitter } from 'expo-modules-core';
+
+interface VoiceEvents {
+    onSpeechStart: () => void;
+    onSpeechEnd: () => void;
+    onVolumeChange: (volume: number) => void;
+    onError: (error: Error) => void;
+}
 
 class VoiceInputService {
     private static instance: VoiceInputService;
     private recording: Audio.Recording | null = null;
-    private isRecordingActive: boolean = false;
+    private isListening = false;
+    private listeners: Partial<VoiceEvents> = {};
+    private meteringInterval: NodeJS.Timeout | null = null;
+
+    // VAD Configuration
+    private readonly SILENCE_THRESHOLD = -40; // dB
+    private readonly SILENCE_DURATION = 1500; // ms
+    private silenceTimer: NodeJS.Timeout | null = null;
+    private isSpeaking = false;
 
     private constructor() { }
 
@@ -15,74 +31,136 @@ class VoiceInputService {
         return VoiceInputService.instance;
     }
 
-    public async requestPermissions(): Promise<boolean> {
-        try {
-            const { status } = await Audio.requestPermissionsAsync();
-            return status === 'granted';
-        } catch (error) {
-            console.error('Error requesting audio permissions:', error);
-            return false;
-        }
+    setListeners(events: Partial<VoiceEvents>) {
+        this.listeners = events;
     }
 
-    public async startRecording(): Promise<boolean> {
+    // Compatibility method for existing code
+    setStatusUpdateListener(callback: (status: any) => void) {
+        // This is a simplified wrapper to maintain compatibility with useChatFlow
+        // In the future, useChatFlow should use setListeners directly
+    }
+
+    async startRecording(): Promise<boolean> {
         try {
-            const hasPermission = await this.requestPermissions();
-            if (!hasPermission) {
-                console.error('Audio recording permission not granted');
+            if (this.recording) {
+                await this.stopRecording();
+            }
+
+            const { granted } = await Audio.requestPermissionsAsync();
+            if (!granted) {
+                console.error('Microphone permission denied');
                 return false;
             }
 
-            // Configure audio mode for recording
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: true,
                 playsInSilentModeIOS: true,
+                staysActiveInBackground: false,
+                shouldDuckAndroid: true,
+                playThroughEarpieceAndroid: false,
             });
 
-            // Create and prepare the recording with metering enabled
-            const options: any = {
-                ...Audio.RecordingOptionsPresets.HIGH_QUALITY,
-                isMeteringEnabled: true,
-            };
-
-            const { recording } = await Audio.Recording.createAsync(options);
+            const { recording } = await Audio.Recording.createAsync(
+                Audio.RecordingOptionsPresets.HIGH_QUALITY
+            );
 
             this.recording = recording;
-            this.isRecordingActive = true;
+            this.isListening = true;
+            this.isSpeaking = false;
 
-            // Set update interval for smooth visualization (50ms)
-            await this.recording.setProgressUpdateInterval(50);
+            // Start metering
+            this.startMetering();
 
-            console.log('Recording started');
+            console.log('VoiceInputService: Recording started');
             return true;
+
         } catch (error) {
             console.error('Error starting recording:', error);
+            this.listeners.onError?.(error as Error);
             return false;
         }
     }
 
-    public async stopRecording(): Promise<string | null> {
-        if (!this.recording) {
-            console.error('No active recording to stop');
-            return null;
-        }
-
+    async stopRecording(): Promise<string | null> {
         try {
+            this.stopMetering();
+            this.isListening = false;
+            this.isSpeaking = false;
+
+            if (!this.recording) return null;
+
             await this.recording.stopAndUnloadAsync();
             const uri = this.recording.getURI();
             this.recording = null;
-            this.isRecordingActive = false;
 
             // Reset audio mode
             await Audio.setAudioModeAsync({
                 allowsRecordingIOS: false,
             });
 
-            console.log('Recording stopped, URI:', uri);
+            console.log('VoiceInputService: Recording stopped', uri);
             return uri;
+
         } catch (error) {
             console.error('Error stopping recording:', error);
+            this.listeners.onError?.(error as Error);
             return null;
+        }
+    }
+
+    private startMetering() {
+        if (this.meteringInterval) clearInterval(this.meteringInterval);
+
+        // Set explicit progress update interval on the recording object
+        if (this.recording) {
+            this.recording.setProgressUpdateInterval(50);
+            this.recording.setOnRecordingStatusUpdate((status) => {
+                if (status.isRecording && status.metering !== undefined) {
+                    const level = status.metering; // dB value, typically -160 to 0
+                    this.listeners.onVolumeChange?.(level);
+                    this.processVad(level);
+                }
+            });
+        }
+    }
+
+    private stopMetering() {
+        if (this.recording) {
+            this.recording.setOnRecordingStatusUpdate(null);
+        }
+        if (this.meteringInterval) {
+            clearInterval(this.meteringInterval);
+            this.meteringInterval = null;
+        }
+        if (this.silenceTimer) {
+            clearTimeout(this.silenceTimer);
+            this.silenceTimer = null;
+        }
+    }
+
+    private processVad(level: number) {
+        if (level > this.SILENCE_THRESHOLD) {
+            // Speech detected
+            if (this.silenceTimer) {
+                clearTimeout(this.silenceTimer);
+                this.silenceTimer = null;
+            }
+
+            if (!this.isSpeaking) {
+                this.isSpeaking = true;
+                this.listeners.onSpeechStart?.();
+                console.log('VoiceInputService: Speech detected');
+            }
+        } else {
+            // Silence detected (potential end of speech)
+            if (this.isSpeaking && !this.silenceTimer) {
+                this.silenceTimer = setTimeout(() => {
+                    this.isSpeaking = false;
+                    this.listeners.onSpeechEnd?.();
+                    console.log('VoiceInputService: Silence detected (Speech End)');
+                }, this.SILENCE_DURATION);
+            }
         }
     }
 
@@ -93,7 +171,6 @@ class VoiceInputService {
                 encoding: 'base64',
             });
 
-            // Send to backend for transcription using Gemini or Whisper
             // Send to backend for transcription
             const response = await fetch('https://veda-ai-backend-ql2b.onrender.com/api/v1/audio/transcribe', {
                 method: 'POST',
@@ -101,43 +178,20 @@ class VoiceInputService {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    audio_base64: base64Audio,
+                    audioData: base64Audio,
                     language: language,
                 }),
             });
 
             if (!response.ok) {
-                throw new Error(`Transcription failed: ${response.status}`);
+                throw new Error(`Transcription failed: ${response.statusText}`);
             }
 
             const data = await response.json();
-            return data.text || '';
+            return data.text;
         } catch (error) {
             console.error('Transcription error:', error);
-            // Return empty string on error - user can retry
             return '';
-        }
-    }
-
-    public isRecording(): boolean {
-        return this.isRecordingActive;
-    }
-
-    public async cancelRecording(): Promise<void> {
-        if (this.recording) {
-            try {
-                await this.recording.stopAndUnloadAsync();
-            } catch (e) {
-                // Ignore errors during cancellation
-            }
-            this.recording = null;
-            this.isRecordingActive = false;
-        }
-    }
-
-    public setStatusUpdateListener(callback: (status: Audio.RecordingStatus) => void): void {
-        if (this.recording) {
-            this.recording.setOnRecordingStatusUpdate(callback);
         }
     }
 }

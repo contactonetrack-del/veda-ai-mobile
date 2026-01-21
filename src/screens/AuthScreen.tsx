@@ -519,25 +519,25 @@ export default function AuthScreen({ onSuccess }: { onSuccess: () => void }) {
                             <Text style={[styles.socialButtonText, { color: colors.text }]}>Google</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity
-                            style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-                            onPress={handleGuest}
-                        >
-                            <Ionicons name="person-circle" size={22} color={colors.text} />
-                        </TouchableOpacity>
-
                         {isBiometricSupported && (
                             <TouchableOpacity
                                 style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.primary, borderWidth: 1 }]}
                                 onPress={handleBiometricAuth}
                             >
                                 <Ionicons
-                                    name={biometricType === LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION ? "scan-outline" : "finger-print-outline"}
+                                    name="finger-print"
                                     size={22}
                                     color={colors.primary}
                                 />
                             </TouchableOpacity>
                         )}
+
+                        <TouchableOpacity
+                            style={[styles.socialButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+                            onPress={handleGuest}
+                        >
+                            <Ionicons name="person-circle" size={22} color={colors.text} />
+                        </TouchableOpacity>
                     </View>
 
                     <View style={styles.footer}>

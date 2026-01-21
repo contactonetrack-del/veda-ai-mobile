@@ -1,5 +1,5 @@
 /**
- * Edit Profile Screen - Premium UI
+ * Edit Profile Screen - Enhanced
  */
 
 import React, { useState, useEffect } from 'react';
@@ -12,68 +12,91 @@ import {
     Image,
     ScrollView,
     Alert,
-    Platform,
-    Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useNavigation } from '@react-navigation/native';
 import { updateProfile } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-
+import { ProfileService, UserProfileExtended } from '../services/ProfileService';
 import { GlassView } from '../components/common/GlassView';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 
-export default function EditProfileScreen() {
-    const navigation = useNavigation();
+type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
+
+export default function EditProfileScreen({ navigation }: Props) {
     const { user } = useAuth();
     const { colors, isDark } = useTheme();
     const { t } = useLanguage();
 
-    // State
+    // Core Profile State
     const [name, setName] = useState(user?.name || '');
-    const [email, setEmail] = useState(user?.email || '');
-    const [dob, setDob] = useState(''); // Allow string or use a date picker
     const [avatar, setAvatar] = useState<string | null>(null);
+
+    // Extended State
+    const [bio, setBio] = useState('');
+    const [location, setLocation] = useState('');
+    const [website, setWebsite] = useState('');
+    const [coverImage, setCoverImage] = useState<string | null>(null);
+
+    // Socials
+    const [twitter, setTwitter] = useState('');
+    const [linkedin, setLinkedin] = useState('');
+    const [instagram, setInstagram] = useState('');
+
     const [loading, setLoading] = useState(false);
 
-    // Load extra profile data stored in AsyncStorage (DOB, Avatar)
     useEffect(() => {
-        const loadProfileData = async () => {
-            try {
-                const savedDob = await AsyncStorage.getItem(`user_dob_${user?.id}`);
-                const savedAvatar = await AsyncStorage.getItem(`user_avatar_${user?.id}`);
-                if (savedDob) setDob(savedDob);
-                if (savedAvatar) setAvatar(savedAvatar);
-            } catch (e) {
-                console.log('Error loading profile data', e);
-            }
-        };
-        if (user?.id) loadProfileData();
+        loadProfileData();
     }, [user?.id]);
 
-    const pickImage = async () => {
+    const loadProfileData = async () => {
+        if (!user?.id) return;
+
+        // Load local avatar/dob logic if still needed, but primarily load from ProfileService
+        const extendedProfile = await ProfileService.getProfile(user.id);
+
+        if (extendedProfile) {
+            setBio(extendedProfile.bio || '');
+            setLocation(extendedProfile.location || '');
+            setWebsite(extendedProfile.website || '');
+            setCoverImage(extendedProfile.coverImage);
+
+            if (extendedProfile.socials) {
+                setTwitter(extendedProfile.socials.twitter || '');
+                setLinkedin(extendedProfile.socials.linkedin || '');
+                setInstagram(extendedProfile.socials.instagram || '');
+            }
+        }
+
+        // Also check if we have a local avatar override from previous version
+        const savedAvatar = await AsyncStorage.getItem(`user_avatar_${user.id}`);
+        if (savedAvatar) setAvatar(savedAvatar);
+    };
+
+    const pickImage = async (type: 'avatar' | 'cover') => {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
-            Alert.alert('Permission Denied', 'We need camera roll permissions to change your photo.');
+            Alert.alert('Permission Denied', 'We need camera roll permissions.');
             return;
         }
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: [1, 1],
+            aspect: type === 'avatar' ? [1, 1] : [16, 9],
             quality: 0.5,
-            base64: true, // we might need base64 if we want to store it simply or use URI
         });
 
         if (!result.canceled) {
-            setAvatar(result.assets[0].uri);
+            if (type === 'avatar') setAvatar(result.assets[0].uri);
+            else setCoverImage(result.assets[0].uri);
         }
     };
 
@@ -85,21 +108,32 @@ export default function EditProfileScreen() {
 
         setLoading(true);
         try {
-            // 1. Update basic auth profile if supported
+            // 1. Update basic auth profile
             if (auth.currentUser) {
-                await updateProfile(auth.currentUser, { displayName: name });
+                await updateProfile(auth.currentUser, {
+                    displayName: name,
+                    photoURL: avatar
+                });
             }
 
-            // 2. Persist local data (DOB, Avatar, Name override)
             if (user?.id) {
-                await AsyncStorage.setItem(`user_name_${user?.id}`, name);
-                await AsyncStorage.setItem(`user_dob_${user?.id}`, dob);
-                if (avatar) {
-                    await AsyncStorage.setItem(`user_avatar_${user?.id}`, avatar);
-                }
+                // 2. Persist legacy parts (Name, Avatar)
+                await AsyncStorage.setItem(`user_name_${user.id}`, name);
+                if (avatar) await AsyncStorage.setItem(`user_avatar_${user.id}`, avatar);
+
+                // 3. Persist Extended Profile via Service
+                const extendedData: Partial<UserProfileExtended> = {
+                    bio,
+                    location,
+                    website,
+                    coverImage,
+                    avatar, // Save avatar to profile service
+                    socials: { twitter, linkedin, instagram }
+                };
+                await ProfileService.updateProfile(user.id, extendedData);
             }
 
-            Alert.alert('Success', 'Profile updated successfully!', [
+            Alert.alert('Success', 'Profile updated!', [
                 { text: 'OK', onPress: () => navigation.goBack() }
             ]);
         } catch (error) {
@@ -112,10 +146,9 @@ export default function EditProfileScreen() {
 
     return (
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            {/* Header */}
             <View style={[styles.header, { borderBottomColor: colors.cardBorder }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <Ionicons name="arrow-back" size={24} color={colors.text} />
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <Text style={{ color: colors.subtext, fontSize: 16 }}>Cancel</Text>
                 </TouchableOpacity>
                 <Text style={[styles.headerTitle, { color: colors.text }]}>{t('edit_profile')}</Text>
                 <TouchableOpacity onPress={handleSave} disabled={loading}>
@@ -124,153 +157,186 @@ export default function EditProfileScreen() {
             </View>
 
             <ScrollView contentContainerStyle={styles.content}>
-                {/* Avatar Section */}
+
+                {/* Cover Image Section */}
+                <TouchableOpacity onPress={() => pickImage('cover')} style={styles.coverSection}>
+                    {coverImage ? (
+                        <Image source={{ uri: coverImage }} style={styles.coverImage} />
+                    ) : (
+                        <View style={[styles.coverPlaceholder, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0' }]}>
+                            <Ionicons name="image-outline" size={32} color={colors.subtext} />
+                            <Text style={{ color: colors.subtext, marginTop: 8 }}>Add Cover Photo</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
+
+                {/* Avatar Section - Overlapping */}
                 <View style={styles.avatarSection}>
-                    <TouchableOpacity onPress={pickImage} style={styles.avatarContainer}>
+                    <TouchableOpacity onPress={() => pickImage('avatar')}>
                         {avatar ? (
-                            <Image source={{ uri: avatar }} style={styles.avatarImage} />
+                            <Image source={{ uri: avatar }} style={[styles.avatarImage, { borderColor: colors.background }]} />
                         ) : (
-                            <LinearGradient colors={[colors.primary, '#059669']} style={styles.avatarPlaceholder}>
-                                <Ionicons name="person" size={40} color="#FFF" />
+                            <LinearGradient colors={[colors.primary, '#059669']} style={[styles.avatarPlaceholder, { borderColor: colors.background }]}>
+                                <Text style={{ fontSize: 32, color: '#FFF' }}>{name.charAt(0)}</Text>
                             </LinearGradient>
                         )}
-                        <View style={[styles.cameraIconBadge, { borderColor: colors.background, backgroundColor: colors.accent }]}>
-                            <Ionicons name="camera" size={16} color="#FFF" />
+                        <View style={[styles.cameraBadge, { backgroundColor: colors.primary }]}>
+                            <Ionicons name="camera" size={14} color="#FFF" />
                         </View>
                     </TouchableOpacity>
-                    <Text style={[styles.changePhotoText, { color: colors.primary }]}>{t('change_photo')}</Text>
                 </View>
 
                 {/* Form Fields */}
-                <GlassView style={styles.formContainer} intensity={30}>
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colors.subtext }]}>{t('full_name')}</Text>
-                        <TextInput
-                            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-                            value={name}
-                            onChangeText={setName}
-                            placeholder={t('enter_name')}
-                            placeholderTextColor={colors.subtext}
-                        />
-                    </View>
+                <View style={styles.form}>
+                    <InputGroup label={t('full_name')} value={name} onChange={setName} colors={colors} />
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colors.subtext }]}>{t('email_address')}</Text>
-                        <TextInput
-                            style={[styles.input, styles.disabledInput, { backgroundColor: isDark ? '#1E293B' : '#E2E8F0', borderColor: colors.inputBorder, color: colors.subtext }]}
-                            value={email}
-                            editable={false}
-                            placeholder="your@email.com"
-                            placeholderTextColor={colors.subtext}
-                        />
-                        <Text style={[styles.helperText, { color: colors.subtext }]}>{t('email_cannot_change')}</Text>
-                    </View>
+                    <InputGroup label="Bio" value={bio} onChange={setBio} colors={colors} multiline />
 
-                    <View style={styles.inputGroup}>
-                        <Text style={[styles.label, { color: colors.subtext }]}>{t('dob')}</Text>
+                    <InputGroup label="Location" value={location} onChange={setLocation} colors={colors} placeholder="New York, USA" />
+
+                    <InputGroup label="Website" value={website} onChange={setWebsite} colors={colors} placeholder="yourwebsite.com" />
+
+                    <Text style={[styles.sectionLabel, { color: colors.text }]}>Social Links</Text>
+
+                    <View style={styles.socialInputRow}>
+                        <MaterialCommunityIcons name="twitter" size={20} color={colors.subtext} style={styles.socialIcon} />
                         <TextInput
-                            style={[styles.input, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.text }]}
-                            value={dob}
-                            onChangeText={setDob}
-                            placeholder="DD/MM/YYYY"
+                            style={[styles.socialInput, { color: colors.text, borderBottomColor: colors.cardBorder }]}
+                            value={twitter}
+                            onChangeText={setTwitter}
+                            placeholder="Twitter username"
                             placeholderTextColor={colors.subtext}
                         />
                     </View>
-                </GlassView>
+                    <View style={styles.socialInputRow}>
+                        <MaterialCommunityIcons name="linkedin" size={20} color={colors.subtext} style={styles.socialIcon} />
+                        <TextInput
+                            style={[styles.socialInput, { color: colors.text, borderBottomColor: colors.cardBorder }]}
+                            value={linkedin}
+                            onChangeText={setLinkedin}
+                            placeholder="LinkedIn URL"
+                            placeholderTextColor={colors.subtext}
+                        />
+                    </View>
+                    <View style={styles.socialInputRow}>
+                        <MaterialCommunityIcons name="instagram" size={20} color={colors.subtext} style={styles.socialIcon} />
+                        <TextInput
+                            style={[styles.socialInput, { color: colors.text, borderBottomColor: colors.cardBorder }]}
+                            value={instagram}
+                            onChangeText={setInstagram}
+                            placeholder="Instagram username"
+                            placeholderTextColor={colors.subtext}
+                        />
+                    </View>
+                </View>
 
             </ScrollView>
         </SafeAreaView>
     );
 }
 
+const InputGroup = ({ label, value, onChange, colors, multiline, placeholder }: any) => (
+    <View style={styles.inputGroup}>
+        <Text style={[styles.label, { color: colors.subtext }]}>{label}</Text>
+        <TextInput
+            style={[
+                styles.input,
+                {
+                    backgroundColor: colors.inputBg,
+                    borderColor: colors.inputBorder,
+                    color: colors.text,
+                    height: multiline ? 80 : 50,
+                    textAlignVertical: multiline ? 'top' : 'center'
+                }
+            ]}
+            value={value}
+            onChangeText={onChange}
+            multiline={multiline}
+            placeholder={placeholder}
+            placeholderTextColor={colors.subtext}
+        />
+    </View>
+);
+
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     header: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
+        alignItems: 'center',
+        padding: 16,
         borderBottomWidth: 1,
     },
-    backButton: {
-        padding: 8,
+    headerTitle: { fontSize: 17, fontWeight: '600' },
+    saveText: { fontSize: 16, fontWeight: '600' },
+    content: { paddingBottom: 40 },
+    coverSection: {
+        height: 150,
+        width: '100%',
     },
-    headerTitle: {
-        fontSize: 18,
-        fontWeight: '600',
-    },
-    saveText: {
-        fontSize: 16,
-        fontWeight: '600',
-        padding: 8,
-    },
-    content: {
-        padding: 24,
+    coverImage: { width: '100%', height: '100%' },
+    coverPlaceholder: {
+        width: '100%',
+        height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     avatarSection: {
         alignItems: 'center',
-        marginTop: 20,
-        marginBottom: 40,
-    },
-    avatarContainer: {
-        position: 'relative',
-    },
-    avatarPlaceholder: {
-        width: 100,
-        height: 100,
-        borderRadius: 50,
-        justifyContent: 'center',
-        alignItems: 'center',
+        marginTop: -50,
+        marginBottom: 20,
     },
     avatarImage: {
         width: 100,
         height: 100,
         borderRadius: 50,
+        borderWidth: 4,
     },
-    cameraIconBadge: {
+    avatarPlaceholder: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        borderWidth: 4,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    cameraBadge: {
         position: 'absolute',
         bottom: 0,
         right: 0,
-        width: 32,
-        height: 32,
-        borderRadius: 16,
+        width: 30,
+        height: 30,
+        borderRadius: 15,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 2,
+        borderColor: '#FFF',
     },
-    changePhotoText: {
-        marginTop: 12,
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    formContainer: {
-        gap: 24,
-        padding: 20,
-        borderRadius: 20,
-        overflow: 'hidden',
-    },
-    inputGroup: {
-        gap: 8,
-    },
-    label: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
+    form: { paddingHorizontal: 20 },
+    inputGroup: { marginBottom: 20 },
+    label: { fontSize: 14, marginBottom: 8, fontWeight: '500' },
     input: {
-        borderWidth: 1,
         borderRadius: 12,
+        borderWidth: 1,
         paddingHorizontal: 16,
-        paddingVertical: 12,
         fontSize: 16,
     },
-    disabledInput: {
-        opacity: 0.5,
+    sectionLabel: {
+        fontSize: 16,
+        fontWeight: '600',
+        marginTop: 10,
+        marginBottom: 16,
     },
-    helperText: {
-        fontSize: 12,
-        marginTop: 4,
+    socialInputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    socialIcon: { marginRight: 12 },
+    socialInput: {
+        flex: 1,
+        borderBottomWidth: 1,
+        paddingVertical: 8,
+        fontSize: 16,
     },
 });

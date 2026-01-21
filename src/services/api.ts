@@ -6,6 +6,8 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { MessageSource } from '../types/chat';
+
 // Production backend URL
 // Local backend URL (Physical Device & Emulator)
 // Production backend URL (Render)
@@ -105,7 +107,17 @@ export async function isAuthenticated(): Promise<boolean> {
     return token !== null;
 }
 
-export async function updateUserProfile(data: Record<string, any>) {
+export interface UserProfile {
+    id: string;
+    email: string;
+    name?: string;
+    avatar?: string;
+    bio?: string;
+    preferences?: Record<string, any>;
+    created_at?: string;
+}
+
+export async function updateUserProfile(data: Partial<UserProfile>) {
     const response = await authFetch(`${API_V1}/users/me`, {
         method: 'PATCH',
         body: JSON.stringify(data),
@@ -247,7 +259,7 @@ interface OrchestratorResponse {
     response: string;
     intent: string;
     agentUsed: string;
-    sources: SourceInfo[];
+    sources: MessageSource[];
     reviewed: boolean;
     contextUsed: boolean;
     verified: boolean;
@@ -255,6 +267,12 @@ interface OrchestratorResponse {
     timestamp: string;
     success: boolean;
     error?: string;
+    // Ollama Cloud Thinking Traces
+    thinking?: string;
+    thinkingLevel?: 'low' | 'medium' | 'high';
+    // Provider info
+    provider?: string;
+    modelUsed?: string;
 }
 
 /**
@@ -266,7 +284,8 @@ export async function sendOrchestratedMessage(
     userId: string = 'guest',
     mode: 'auto' | 'study' | 'research' | 'analyze' | 'wellness' | 'search' | 'protection' = 'auto',
     style: 'auto' | 'fast' | 'planning' = 'auto',
-    languageCode: LanguageCode = 'en'
+    languageCode: LanguageCode = 'en',
+    useSearch: boolean = false
 ): Promise<OrchestratorResponse> {
     try {
         let contextMessage = message;
@@ -282,7 +301,8 @@ export async function sendOrchestratedMessage(
                 user_id: userId,
                 context: {},
                 mode: mode,
-                style: style
+                style: style,
+                use_search: useSearch
             }),
         });
 
@@ -302,7 +322,13 @@ export async function sendOrchestratedMessage(
             verified: data.verified || false,
             confidence: data.confidence || 0.0,
             timestamp: data.timestamp,
-            success: true
+            success: true,
+            // Ollama Cloud Thinking Traces
+            thinking: data.thinking || null,
+            thinkingLevel: data.thinking_level || null,
+            // Provider info
+            provider: data.provider || null,
+            modelUsed: data.model_used || null
         };
     } catch (error) {
         console.error('[Orchestrator] Error:', error);
@@ -321,6 +347,99 @@ export async function sendOrchestratedMessage(
         };
     }
 }
+
+/**
+ * Stream orchestrated message with real-time response chunks.
+ * Uses fetch API with ReadableStream.
+ */
+export async function sendOrchestratedMessageStream(
+    message: string,
+    onChunk: (chunk: string) => void,
+    onMetadata: (metadata: { agent: string; intent: string }) => void,
+    onComplete: (data: { thinking?: string; sources?: MessageSource[] }) => void,
+    onError: (error: string) => void,
+    userId: string = 'guest',
+    mode: 'auto' | 'study' | 'research' | 'analyze' | 'wellness' | 'search' | 'protection' = 'auto',
+    style: 'auto' | 'fast' | 'planning' = 'auto',
+    languageCode: LanguageCode = 'en',
+    useSearch: boolean = false
+): Promise<void> {
+    try {
+        let contextMessage = message;
+        if (languageCode !== 'en') {
+            const langName = SUPPORTED_LANGUAGES[languageCode].name;
+            contextMessage = `[Response Language: ${langName}] ${message}`;
+        }
+
+        const response = await fetch(`${API_V1}/orchestrator/query/stream`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                message: contextMessage,
+                user_id: userId,
+                context: {},
+                mode: mode,
+                style: style,
+                use_search: useSearch
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) {
+            throw new Error('No response body');
+        }
+
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+
+            // Keep the last incomplete line in the buffer
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+                if (!line.trim() || !line.startsWith('data: ')) continue;
+
+                try {
+                    const data = JSON.parse(line.slice(6));
+                    const type = data.type;
+
+                    if (type === 'metadata') {
+                        onMetadata({ agent: data.agent, intent: data.intent });
+                    } else if (type === 'content') {
+                        onChunk(data.text);
+                    } else if (type === 'done') {
+                        onComplete({
+                            thinking: data.thinking,
+                            sources: data.sources
+                        });
+                    } else if (type === 'error') {
+                        onError(data.error);
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse SSE data:', line);
+                }
+            }
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Streaming failed';
+        console.error('[Streaming] Error:', error);
+        onError(errorMessage);
+    }
+}
+
 
 /**
  * Get orchestrator status and available agents.
@@ -627,26 +746,108 @@ export async function getBrowserStatus() {
     return response.json();
 }
 
+// ==================== VISION API (Image Analysis) ====================
+
+/**
+ * Analyze an image using the multimodal endpoint.
+ * Converts image URI to base64 and sends to backend.
+ */
+export async function analyzeImage(
+    imageUri: string,
+    query: string = "What's in this image?",
+    analysisType: 'general' | 'food' | 'pose' | 'health_chart' | 'skin' = 'general'
+): Promise<{ success: boolean; response: string; analysis?: Record<string, any>; error?: string }> {
+    try {
+        // Import FileSystem dynamically to avoid bundling issues
+        const FileSystem = require('expo-file-system');
+
+        // Convert local URI to base64
+        const base64 = await FileSystem.readAsStringAsync(imageUri, {
+            encoding: FileSystem.EncodingType.Base64,
+        });
+
+        const response = await authFetch(`${API_V1}/multimodal/analyze`, {
+            method: 'POST',
+            body: JSON.stringify({
+                image: base64,
+                query: query,
+                analysis_type: analysisType
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            return { success: false, response: '', error: error.detail || 'Image analysis failed' };
+        }
+
+        const data = await response.json();
+        return {
+            success: true,
+            response: data.response || data.analysis?.description || 'Image analyzed successfully.',
+            analysis: data.analysis
+        };
+    } catch (error) {
+        console.error('[Vision] Error:', error);
+        return {
+            success: false,
+            response: '',
+            error: error instanceof Error ? error.message : 'Failed to analyze image'
+        };
+    }
+}
+
 // ==================== MEMORY API (Phase 7: Mobile Parity) ====================
+// SECURITY NOTE: Backend MUST validate that the authenticated user (from JWT token)
+// matches the userId parameter. The frontend sends the token via authFetch.
 
 export async function getMemories(userId: string, limit: number = 50) {
-    const response = await authFetch(`${API_V1}/memory/?user_id=${userId}&limit=${limit}`);
-    if (!response.ok) throw new Error('Failed to fetch memories');
+    // Frontend safety check - ensure userId is valid
+    if (!userId || userId === 'guest') {
+        console.warn('getMemories: Attempted to fetch memories without valid userId');
+        return [];
+    }
+
+    const response = await authFetch(`${API_V1}/memory/?user_id=${encodeURIComponent(userId)}&limit=${limit}`);
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            console.error('getMemories: Unauthorized access attempt');
+            return [];
+        }
+        throw new Error('Failed to fetch memories');
+    }
     return response.json();
 }
 
 export async function deleteMemory(userId: string, memoryId: string) {
-    const response = await authFetch(`${API_V1}/memory/${memoryId}?user_id=${userId}`, {
+    if (!userId || userId === 'guest') {
+        throw new Error('Cannot delete memory without valid userId');
+    }
+
+    const response = await authFetch(`${API_V1}/memory/${encodeURIComponent(memoryId)}?user_id=${encodeURIComponent(userId)}`, {
         method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete memory');
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('Unauthorized access');
+        }
+        throw new Error('Failed to delete memory');
+    }
     return response.json();
 }
 
 export async function clearMemory(userId: string) {
-    const response = await authFetch(`${API_V1}/memory/?user_id=${userId}`, {
+    if (!userId || userId === 'guest') {
+        throw new Error('Cannot clear memory without valid userId');
+    }
+
+    const response = await authFetch(`${API_V1}/memory/?user_id=${encodeURIComponent(userId)}`, {
         method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to clear memory');
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('Unauthorized access');
+        }
+        throw new Error('Failed to clear memory');
+    }
     return response.json();
 }

@@ -3,7 +3,8 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { initializeAuth } from 'firebase/auth';
+// @ts-ignore: Firebase types compatibility
+import { initializeAuth, getReactNativePersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -25,7 +26,9 @@ try {
         console.error("❌ Firebase API Key is missing! Check your environment variables.");
     }
     app = initializeApp(firebaseConfig);
-    auth = initializeAuth(app);
+    auth = initializeAuth(app, {
+        persistence: getReactNativePersistence(AsyncStorage)
+    });
     db = getFirestore(app);
 } catch (error) {
     console.error("🔥 Firebase Initialization Error:", error);

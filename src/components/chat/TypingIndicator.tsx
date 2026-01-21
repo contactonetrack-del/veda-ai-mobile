@@ -1,18 +1,21 @@
 /**
- * TypingIndicator - Animated AI Typing Feedback Component
- * Features: Three animated dots with wave pattern, avatar integration
+ * TypingIndicator - Premium Animated AI Typing Feedback
+ * Features: Three dots with wave pattern using Reanimated for 60FPS performance
  */
 
-import React, { useEffect, useRef } from 'react';
-import {
-    View,
-    StyleSheet,
-    Animated,
-    Image,
-} from 'react-native';
+import React, { useEffect } from 'react';
+import { View, StyleSheet, Image } from 'react-native';
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withTiming,
+    withSequence,
+    withDelay,
+    Easing,
+} from 'react-native-reanimated';
 import { useTheme } from '../../context/ThemeContext';
 import { borderRadius, spacing, avatarSize } from '../../config/spacing';
-import { duration } from '../../config/animations';
 
 interface TypingIndicatorProps {
     showAvatar?: boolean;
@@ -20,75 +23,66 @@ interface TypingIndicatorProps {
     dotSize?: number;
 }
 
+const Dot = ({ index, color, size }: { index: number; color: string; size: number }) => {
+    const translateY = useSharedValue(0);
+    const opacity = useSharedValue(0.4);
+
+    useEffect(() => {
+        const delay = index * 200;
+
+        translateY.value = withDelay(
+            delay,
+            withRepeat(
+                withSequence(
+                    withTiming(-6, { duration: 400, easing: Easing.bezier(0.42, 0, 0.58, 1) }),
+                    withTiming(0, { duration: 400, easing: Easing.bezier(0.42, 0, 0.58, 1) })
+                ),
+                -1,
+                true
+            )
+        );
+
+        opacity.value = withDelay(
+            delay,
+            withRepeat(
+                withSequence(
+                    withTiming(1, { duration: 400 }),
+                    withTiming(0.4, { duration: 400 })
+                ),
+                -1,
+                true
+            )
+        );
+    }, [index, translateY, opacity]);
+
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ translateY: translateY.value }],
+        opacity: opacity.value,
+    }));
+
+    return (
+        <Animated.View
+            style={[
+                styles.dot,
+                { backgroundColor: color, width: size, height: size },
+                animatedStyle,
+            ]}
+        />
+    );
+};
+
 export default function TypingIndicator({
     showAvatar = true,
     dotColor,
     dotSize = 8,
 }: TypingIndicatorProps) {
     const { colors, isDark } = useTheme();
-
-    // Animation values for each dot
-    const dot1 = useRef(new Animated.Value(0)).current;
-    const dot2 = useRef(new Animated.Value(0)).current;
-    const dot3 = useRef(new Animated.Value(0)).current;
-
     const finalDotColor = dotColor || colors.primary;
-
-    useEffect(() => {
-        const animateDot = (dot: Animated.Value, delay: number) => {
-            return Animated.loop(
-                Animated.sequence([
-                    Animated.delay(delay),
-                    Animated.timing(dot, {
-                        toValue: 1,
-                        duration: 300,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(dot, {
-                        toValue: 0,
-                        duration: 300,
-                        useNativeDriver: true,
-                    }),
-                ])
-            );
-        };
-
-        const animation1 = animateDot(dot1, 0);
-        const animation2 = animateDot(dot2, 150);
-        const animation3 = animateDot(dot3, 300);
-
-        animation1.start();
-        animation2.start();
-        animation3.start();
-
-        return () => {
-            animation1.stop();
-            animation2.stop();
-            animation3.stop();
-        };
-    }, []);
-
-    const getAnimatedStyle = (dot: Animated.Value) => {
-        return {
-            transform: [
-                {
-                    translateY: dot.interpolate({
-                        inputRange: [0, 1],
-                        outputRange: [0, -6],
-                    }),
-                },
-            ],
-            opacity: dot.interpolate({
-                inputRange: [0, 1],
-                outputRange: [0.5, 1],
-            }),
-        };
-    };
 
     return (
         <View style={styles.container}>
             {showAvatar && (
-                <View style={styles.avatarContainer}>
+                <View style={[styles.avatarContainer, { borderColor: colors.cardBorder }]}>
                     <Image
                         source={require('../../../assets/veda-avatar.png')}
                         style={styles.avatar}
@@ -101,135 +95,12 @@ export default function TypingIndicator({
                 styles.bubble,
                 {
                     backgroundColor: isDark ? colors.card : colors.inputBg,
+                    borderBottomLeftRadius: 4,
                 },
             ]}>
-                <Animated.View
-                    style={[
-                        styles.dot,
-                        { backgroundColor: finalDotColor, width: dotSize, height: dotSize },
-                        getAnimatedStyle(dot1),
-                    ]}
-                />
-                <Animated.View
-                    style={[
-                        styles.dot,
-                        { backgroundColor: finalDotColor, width: dotSize, height: dotSize },
-                        getAnimatedStyle(dot2),
-                    ]}
-                />
-                <Animated.View
-                    style={[
-                        styles.dot,
-                        { backgroundColor: finalDotColor, width: dotSize, height: dotSize },
-                        getAnimatedStyle(dot3),
-                    ]}
-                />
-            </View>
-        </View>
-    );
-}
-
-// Alternative: Pulsing dots version
-export function TypingIndicatorPulse({
-    showAvatar = true,
-    dotColor,
-    dotSize = 8,
-}: TypingIndicatorProps) {
-    const { colors, isDark } = useTheme();
-
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(0.6)).current;
-
-    const finalDotColor = dotColor || colors.primary;
-
-    useEffect(() => {
-        const animation = Animated.loop(
-            Animated.sequence([
-                Animated.parallel([
-                    Animated.timing(scaleAnim, {
-                        toValue: 1.2,
-                        duration: duration.pulse / 2,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(opacityAnim, {
-                        toValue: 1,
-                        duration: duration.pulse / 2,
-                        useNativeDriver: true,
-                    }),
-                ]),
-                Animated.parallel([
-                    Animated.timing(scaleAnim, {
-                        toValue: 1,
-                        duration: duration.pulse / 2,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(opacityAnim, {
-                        toValue: 0.6,
-                        duration: duration.pulse / 2,
-                        useNativeDriver: true,
-                    }),
-                ]),
-            ])
-        );
-
-        animation.start();
-        return () => animation.stop();
-    }, []);
-
-    return (
-        <View style={styles.container}>
-            {showAvatar && (
-                <View style={styles.avatarContainer}>
-                    <Image
-                        source={require('../../../assets/veda-avatar.png')}
-                        style={styles.avatar}
-                        resizeMode="contain"
-                    />
-                </View>
-            )}
-
-            <View style={[
-                styles.bubble,
-                {
-                    backgroundColor: isDark ? colors.card : colors.inputBg,
-                },
-            ]}>
-                <Animated.View
-                    style={[
-                        styles.dot,
-                        {
-                            backgroundColor: finalDotColor,
-                            width: dotSize,
-                            height: dotSize,
-                            transform: [{ scale: scaleAnim }],
-                            opacity: opacityAnim,
-                        },
-                    ]}
-                />
-                <Animated.View
-                    style={[
-                        styles.dot,
-                        {
-                            backgroundColor: finalDotColor,
-                            width: dotSize,
-                            height: dotSize,
-                            transform: [{ scale: scaleAnim }],
-                            opacity: opacityAnim,
-                        },
-                    ]}
-                />
-                <Animated.View
-                    style={[
-                        styles.dot,
-                        {
-                            backgroundColor: finalDotColor,
-                            width: dotSize,
-                            height: dotSize,
-                            transform: [{ scale: scaleAnim }],
-                            opacity: opacityAnim,
-                        },
-                    ]}
-                />
+                <Dot index={0} color={finalDotColor} size={dotSize} />
+                <Dot index={1} color={finalDotColor} size={dotSize} />
+                <Dot index={2} color={finalDotColor} size={dotSize} />
             </View>
         </View>
     );
@@ -241,6 +112,7 @@ const styles = StyleSheet.create({
         alignItems: 'flex-end',
         paddingHorizontal: spacing[4],
         paddingVertical: spacing[2],
+        marginBottom: spacing[4],
     },
     avatarContainer: {
         width: avatarSize.sm,
@@ -248,6 +120,7 @@ const styles = StyleSheet.create({
         borderRadius: avatarSize.sm / 2,
         overflow: 'hidden',
         marginRight: spacing[3],
+        borderWidth: 1,
     },
     avatar: {
         width: '100%',
@@ -257,9 +130,9 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingVertical: spacing[4],
         borderRadius: borderRadius.bubble,
-        gap: 4,
+        gap: 6,
     },
     dot: {
         borderRadius: borderRadius.full,

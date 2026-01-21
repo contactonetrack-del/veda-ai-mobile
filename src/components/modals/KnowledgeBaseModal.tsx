@@ -17,21 +17,27 @@ import { useTheme } from '../../context/ThemeContext';
 import * as api from '../../services/api';
 import * as Haptics from 'expo-haptics';
 
+export interface KnowledgeDocument {
+    content: string;
+    source: string;
+    score: number;
+}
+
 interface KnowledgeBaseModalProps {
     visible: boolean;
     onClose: () => void;
-    onSelectDocument?: (document: any) => void;
+    onSelectDocument?: (document: KnowledgeDocument) => void;
 }
 
-export default function KnowledgeBaseModal({ visible, onClose, onSelectDocument }: KnowledgeBaseModalProps) {
+export default function KnowledgeBaseModal({ visible, onClose, onSelectDocument }: KnowledgeBaseModalProps): React.ReactElement | null {
     const { colors, isDark } = useTheme();
     const [status, setStatus] = useState<'loading' | 'connected' | 'error'>('loading');
     const [stats, setStats] = useState<any>(null);
     const [searchQuery, setSearchQuery] = useState('');
-    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [searchResults, setSearchResults] = useState<KnowledgeDocument[]>([]);
     const [isSearching, setIsSearching] = useState(false);
 
-    const handleSelect = (item: any) => {
+    const handleSelect = (item: KnowledgeDocument) => {
         Haptics.selectionAsync();
         onSelectDocument?.(item);
         onClose();
@@ -49,7 +55,7 @@ export default function KnowledgeBaseModal({ visible, onClose, onSelectDocument 
             const data = await api.getKnowledgeStatus();
             setStats(data);
             setStatus('connected');
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('KB Status Error:', error);
             setStatus('error');
         }
@@ -64,7 +70,7 @@ export default function KnowledgeBaseModal({ visible, onClose, onSelectDocument 
         try {
             const results = await api.searchKnowledge(searchQuery);
             setSearchResults(results.results || []);
-        } catch (error) {
+        } catch (error: unknown) {
             console.error('KB Search Error:', error);
         } finally {
             setIsSearching(false);

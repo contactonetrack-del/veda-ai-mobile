@@ -13,7 +13,7 @@ interface MarkdownToolbarProps {
 
 interface ToolbarButton {
     id: string;
-    icon: string;
+    icon: keyof typeof MaterialCommunityIcons.glyphMap;
     iconSet: 'ionicons' | 'material';
     label: string;
     prefix: string;
@@ -64,7 +64,7 @@ export default function MarkdownToolbar({ visible, onFormat, onInsert }: Markdow
                     accessibilityRole="button"
                 >
                     <MaterialCommunityIcons
-                        name={button.icon as any}
+                        name={button.icon}
                         size={20}
                         color={colors.primary}
                     />

@@ -31,18 +31,18 @@ export default function SkeletonBubble() {
 
     return (
         <View style={styles.container}>
-            {/* AI Avatar Skeleton */}
-            <View style={[styles.avatar, { backgroundColor: colors.chatUserBubbleBorder }]} />
+            {/* AI Avatar Skeleton with subtle shimmer */}
+            <View style={[styles.avatar, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]} />
 
             <View style={styles.contentContainer}>
                 {/* Bubble Skeleton */}
                 <View style={[
                     styles.bubble,
                     {
-                        backgroundColor: colors.card,
-                        borderColor: colors.cardBorder,
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#FFFFFF',
+                        borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
                     },
-                    shadows.sm
+                    shadows.md
                 ]}>
                     {/* Shimmer Layer */}
                     <View style={StyleSheet.absoluteFill}>
@@ -50,11 +50,11 @@ export default function SkeletonBubble() {
                             style={{
                                 flex: 1,
                                 transform: [{ translateX }],
-                                opacity: isDark ? 0.05 : 0.3,
+                                opacity: isDark ? 0.05 : 0.15,
                             }}
                         >
                             <LinearGradient
-                                colors={['transparent', colors.subtext, 'transparent']}
+                                colors={['transparent', isDark ? '#FFFFFF' : colors.primary, 'transparent']}
                                 start={{ x: 0, y: 0 }}
                                 end={{ x: 1, y: 0 }}
                                 style={StyleSheet.absoluteFill}
@@ -63,9 +63,9 @@ export default function SkeletonBubble() {
                     </View>
 
                     {/* Text Lines */}
-                    <View style={[styles.line, { width: '90%', backgroundColor: colors.chatUserBubbleBorder }]} />
-                    <View style={[styles.line, { width: '75%', backgroundColor: colors.chatUserBubbleBorder }]} />
-                    <View style={[styles.line, { width: '40%', backgroundColor: colors.chatUserBubbleBorder }]} />
+                    <View style={[styles.line, { width: '95%', backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]} />
+                    <View style={[styles.line, { width: '85%', backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]} />
+                    <View style={[styles.line, { width: '60%', backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)' }]} />
                 </View>
             </View>
         </View>
@@ -76,15 +76,14 @@ const styles = StyleSheet.create({
     container: {
         flexDirection: 'row',
         paddingHorizontal: spacing[4],
-        marginVertical: spacing[2],
-        marginBottom: spacing[4],
+        marginVertical: spacing[3],
         alignItems: 'flex-start',
     },
     avatar: {
-        width: 32,
-        height: 32,
-        borderRadius: borderRadius.full,
-        marginRight: spacing[2],
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        marginRight: spacing[3],
         marginTop: 2,
     },
     contentContainer: {
@@ -93,16 +92,15 @@ const styles = StyleSheet.create({
     },
     bubble: {
         paddingHorizontal: spacing[4],
-        paddingVertical: spacing[3],
+        paddingVertical: spacing[4],
         borderRadius: borderRadius.bubble,
         borderTopLeftRadius: borderRadius.sm,
         borderWidth: 1,
-        overflow: 'hidden', // Mask the shimmer
+        overflow: 'hidden',
     },
     line: {
-        height: 12,
-        borderRadius: 6,
-        marginBottom: spacing[2],
-        opacity: 0.5,
+        height: 10,
+        borderRadius: 5,
+        marginBottom: spacing[3],
     },
 });

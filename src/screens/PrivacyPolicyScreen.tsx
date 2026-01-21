@@ -9,12 +9,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { GlassView } from '../components/common/GlassView';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
-import { useNavigation } from '@react-navigation/native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 
-export default function PrivacyPolicyScreen() {
+type Props = NativeStackScreenProps<RootStackParamList, 'PrivacyPolicy'>;
+
+export default function PrivacyPolicyScreen({ navigation }: Props) {
     const { colors } = useTheme();
     const { t } = useLanguage();
-    const navigation = useNavigation();
     const insets = useSafeAreaInsets();
 
     return (

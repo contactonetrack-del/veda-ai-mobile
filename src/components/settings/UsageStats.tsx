@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Dimensions, ActivityIndicator, Animated, Easing } from 'react-native';
 import { useTheme } from '../../context/ThemeContext';
+import { useTranslation } from 'react-i18next';
 import { spacing, borderRadius } from '../../config/spacing';
 import { getUserStats, UserStats } from '../../services/api';
 
@@ -60,6 +61,7 @@ function AnimatedBar({ value, color, delay }: { value: number; color: string; de
 
 export default function UsageStats() {
     const { colors, isDark } = useTheme();
+    const { t } = useTranslation();
     const [stats, setStats] = useState<UserStats | null>(null);
     const [loading, setLoading] = useState(true);
     const [dailyUsage, setDailyUsage] = useState<StatData[]>(DEFAULT_DAILY_USAGE);
@@ -107,8 +109,8 @@ export default function UsageStats() {
     return (
         <View style={[styles.container, { backgroundColor: isDark ? colors.card : '#FFF' }]}>
             <View style={styles.header}>
-                <Text style={[styles.title, { color: colors.text }]}>Weekly Activity</Text>
-                <Text style={[styles.subtitle, { color: colors.subtext }]}>Chats per day</Text>
+                <Text style={[styles.title, { color: colors.text }]}>{t('usage.title')}</Text>
+                <Text style={[styles.subtitle, { color: colors.subtext }]}>{t('usage.subtitle')}</Text>
             </View>
 
             <View style={styles.chartContainer}>
@@ -125,17 +127,17 @@ export default function UsageStats() {
             <View style={[styles.statsFooter, { borderTopColor: isDark ? colors.cardBorder : 'rgba(0,0,0,0.05)' }]}>
                 <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: colors.text }]}>{stats?.totalMessages ?? 0}</Text>
-                    <Text style={[styles.statLabel, { color: colors.subtext }]}>Messages</Text>
+                    <Text style={[styles.statLabel, { color: colors.subtext }]}>{t('usage.messages')}</Text>
                 </View>
                 <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
                 <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: colors.text }]}>{stats?.totalChats ?? 0}</Text>
-                    <Text style={[styles.statLabel, { color: colors.subtext }]}>Chats</Text>
+                    <Text style={[styles.statLabel, { color: colors.subtext }]}>{t('usage.chats')}</Text>
                 </View>
                 <View style={[styles.divider, { backgroundColor: colors.cardBorder }]} />
                 <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: colors.text }]}>{stats?.streakDays ?? 0}</Text>
-                    <Text style={[styles.statLabel, { color: colors.subtext }]}>Streak</Text>
+                    <Text style={[styles.statLabel, { color: colors.subtext }]}>{t('usage.streak')}</Text>
                 </View>
             </View>
         </View>

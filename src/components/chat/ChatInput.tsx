@@ -17,6 +17,8 @@ interface ChatInputProps {
     loading: boolean;
     placeholder: string;
     colors: any;
+    useSearch: boolean;
+    onToggleSearch: () => void;
 }
 
 export default function ChatInput({
@@ -28,6 +30,8 @@ export default function ChatInput({
     loading,
     placeholder,
     colors,
+    useSearch,
+    onToggleSearch,
 }: ChatInputProps) {
     const canSend = input.trim() && !isRecording && !loading;
 
@@ -42,9 +46,25 @@ export default function ChatInput({
                     placeholderTextColor={colors.subtext}
                     multiline
                     maxLength={1000}
-                    editable={!isRecording}
                 />
             </View>
+
+            {/* Web Search Toggle */}
+            <TouchableOpacity
+                style={[
+                    styles.micButtonWrapper,
+                    useSearch && { backgroundColor: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)' }
+                ]}
+                onPress={onToggleSearch}
+                disabled={loading}
+                activeOpacity={0.8}
+            >
+                <Ionicons
+                    name={useSearch ? "globe" : "globe-outline"}
+                    size={22}
+                    color={useSearch ? "#3B82F6" : "#475569"}
+                />
+            </TouchableOpacity>
 
             {/* Microphone Button */}
             <TouchableOpacity
